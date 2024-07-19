@@ -3,7 +3,7 @@ package qtrt
 import (
 	"reflect"
 
-	"github.com/kitech/qt.go/miscutil"
+	"github.com/qtui/miscutil"
 )
 
 var ErrPrint = miscutil.ErrPrint

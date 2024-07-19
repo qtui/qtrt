@@ -12,7 +12,7 @@ import (
 	"regexp"
 	"unsafe"
 
-	qt "github.com/kitech/qt.go/qtqt"
+	qt "github.com/qtui/qtqt"
 )
 
 // see qobjectdefs.h:263
@@ -77,10 +77,11 @@ type callbackSlotInvoker func(argvals /* **C.uchar*/ unsafe.Pointer, sigobj inte
 f 函数
 sigobj 是一个Qxxx的go实例，可以通过这个实例查询到signal的参数个数与参数类型信息
 params:
-  Ptr: caller should be Qxxx* qt class pointer
-  string: caller should be QString&
-  bool: caller should be C++'s bool or int8 or char that have 1B length
-  unsafe.Pointer: caller should be a raw pointer
+
+	Ptr: caller should be Qxxx* qt class pointer
+	string: caller should be QString&
+	bool: caller should be C++'s bool or int8 or char that have 1B length
+	unsafe.Pointer: caller should be a raw pointer
 */
 func callbackSlotInvoke(f interface{}, argvalsp /* **C.uchar*/ unsafe.Pointer, sigobj interface{}) {
 	sigobjv := reflect.ValueOf(sigobj)

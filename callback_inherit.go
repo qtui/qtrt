@@ -17,7 +17,7 @@ import (
 	"strings"
 	"unsafe"
 
-	qt "github.com/kitech/qt.go/qtqt"
+	qt "github.com/qtui/qtqt"
 )
 
 /*
@@ -143,6 +143,7 @@ func setAllInheritCallback2c(name string, fnptr unsafe.Pointer) {
 func init_callack_inherit() { setAllInheritCallback2c("AllInherits", C.callbackAllInherits) }
 
 // 在C绑定中的projected继承代理方法直接调用
+//
 //export callbackAllInherits
 func callbackAllInherits(cbobj unsafe.Pointer, iname *C.char, handled *C.int, argc C.int, p0, p1, p2, p3, p4, p5, p6, p7, p8, p9 C.uint64_t) C.uint64_t {
 	name_ := C.GoString(iname)
@@ -314,9 +315,9 @@ func IntAsFloat32(v uint64) (n float32) {
 
 func IsQtclass(tystr string) bool {
 	reg := regexp.MustCompile(`^(qt.*\.)?Q[A-Z](.+)`)
-	return  reg.MatchString(tystr)
+	return reg.MatchString(tystr)
 }
-func GetQtclassName (tystr string) string {
+func GetQtclassName(tystr string) string {
 	reg := regexp.MustCompile(`^(qt[a-z]+\.)?(Q[A-Z](.+))`)
 	if reg.MatchString(tystr) {
 		// qt classes

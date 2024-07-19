@@ -11,7 +11,7 @@ import (
 	"strings"
 	"unsafe"
 
-	qt "github.com/kitech/qt.go/qtqt"
+	qt "github.com/qtui/qtqt"
 )
 
 // usage: ffiqt.Connect()
@@ -273,7 +273,6 @@ var afterDestroyedQObject = func(senderCobj, recverCobj unsafe.Pointer, classNam
 	}
 }
 
-//
 var debugDynSlot bool = false
 
 func init() {
