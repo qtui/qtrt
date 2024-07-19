@@ -17,6 +17,7 @@ func NewFFILibrary(libname string) (lib FFILibrary, err error) {
 	//libname = get_lib_arch_name(libname)
 	lib.name = libname
 	lib.handle, err = dl.Open(libname, dl.Now)
+
 	return
 }
 

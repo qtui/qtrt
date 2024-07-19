@@ -93,6 +93,8 @@ import (
 	"strings"
 	"sync"
 	"unsafe"
+
+	"github.com/kitech/gopp"
 )
 
 func itype2stype(itype byte) *C.ffi_type {
@@ -122,8 +124,9 @@ func itype2stype(itype byte) *C.ffi_type {
 
 /*
 TODO
-  argtypes int[20]
-  argvals uint64_t[20]
+
+	argtypes int[20]
+	argvals uint64_t[20]
 */
 func ffi_call_ex(fn unsafe.Pointer, retype int, rc *uint64, argc int, argtys []int, argvals []uint64) {
 
@@ -148,11 +151,10 @@ func InvokeQtFuncByName(symname string, args []uint64, types []int) uint64 {
 	return 0
 }
 
-////////
+// //////
 type VRetype = uint64 // interface{}
 
 var debugFFICall = false
-var qtlibs = map[string]FFILibrary{}
 
 func init() {
 	dbgval := os.Getenv("QTGO_DEBUG_FFI_CALL")
@@ -164,6 +166,7 @@ func init() {
 func SetDebugFFICall(on bool) { debugFFICall = on }
 func init() {
 	log.SetFlags(log.Flags() | log.Lshortfile)
+	isLinkedQtlib = check_linked_qtmod()
 	init_ffi_invoke()
 	init_so_ffi_call()
 
@@ -220,17 +223,6 @@ func init_ffi_invoke() {
 		return fmt.Sprintf("%slibQt5%s.%s", dirp, modname, oslibexts["linux"])
 	}
 
-	loadModule := func(libpath string, modname string) error {
-		var err error
-		var lib FFILibrary
-		lib, err = NewFFILibrary(libpath)
-		ErrPrint(err, lib, libpath, modname)
-		if err == nil {
-			qtlibs[modname] = lib
-		}
-		return err
-	}
-
 	mods := []string{"Inline"}
 	// TODO auto check static and omit load other module
 	if !UseWrapSymbols { // raw c++ symbols
@@ -241,6 +233,8 @@ func init_ffi_invoke() {
 		libpath := getLibFile(getLibDirp(), modname)
 		loadModule(libpath, modname)
 	}
+	// log.Println("Loaded", len(qtlibs), "of", len(mods), gopp.MapKeys(qtlibs))
+	gopp.ZeroPrint(len(qtlibs), "Load 0 qtmodule, want", len(mods), mods)
 }
 
 func init_so_ffi_call() {
@@ -406,7 +400,9 @@ var tyconvmap = map[reflect.Kind]byte{
 }
 
 // argval should be the value's valid address
-//   for non-addressable primitive type, a temporary var is created and it's address is returned
+//
+//	for non-addressable primitive type, a temporary var is created and it's address is returned
+//
 // argrefp for hold the temporary created var's address's reference, prevent gc for a while
 func convArg(idx int, argx interface{}) (argty byte, argval uint64, argrefp reflect.Value) {
 	av := reflect.ValueOf(argx)
@@ -582,7 +578,7 @@ func GetCtorAllocStack(clsname string) []uintptr {
 	return nil
 }
 
-///
+// /
 func test() {
 	var ret VRetype
 	var err error
