@@ -181,6 +181,12 @@ func init() {
 }
 
 func init_ffi_invoke() {
+	if true {
+		loadAllModules()
+		log.Println("Loaded", len(qtlibs), "of", len(mainqtmods), gopp.MapKeys(qtlibs))
+		gopp.ZeroPrint(len(qtlibs), "Load 0 qtmodule, want", len(mainqtmods), mainqtmods)
+		return
+	}
 
 	// lib dir prefix
 	// go arch name => android lib name
@@ -238,8 +244,10 @@ func init_ffi_invoke() {
 		libpath := getLibFile(getLibDirp(), modname)
 		loadModule(libpath, modname)
 	}
+
 	// log.Println("Loaded", len(qtlibs), "of", len(mods), gopp.MapKeys(qtlibs))
 	gopp.ZeroPrint(len(qtlibs), "Load 0 qtmodule, want", len(mods), mods)
+
 }
 
 func init_so_ffi_call() {
@@ -375,15 +383,9 @@ func GetQtSymAddrRaw(symname string) unsafe.Pointer {
 		}
 		return addr
 	}
-	if debugFFICall {
-		log.Println(fmt.Errorf("Symbol not found: %s", symname))
-	}
-	// rv := cgopp.Dlsym0(symname)
+
 	rv, err := purego.Dlsym(purego.RTLD_DEFAULT, symname)
-	if err != nil {
-		log.Println(rv, err)
-		// panic(rv)
-	}
+	gopp.ErrPrint(err, symname)
 
 	return voidptr(rv)
 }

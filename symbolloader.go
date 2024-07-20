@@ -12,11 +12,15 @@ import (
 )
 
 var qtsymbolsloaded = false
-var qtsymbolsraw []string
 
+// var qtsymbolsraw []string
+
+// TODO 这个非常耗时
+// 返回匹配的值
 func LoadAllQtSymbols(stub string) []string {
+	log.Println(qtlibpaths)
 	if qtsymbolsloaded {
-		return qtsymbolsraw
+		return nil
 	}
 	qtsymbolsloaded = true
 	var nowt = time.Now()
@@ -30,7 +34,7 @@ func LoadAllQtSymbols(stub string) []string {
 	})
 	log.Println(gopp.FirstofGv(libs), libnames, len(libs))
 	signtx := gopp.Mapdo(libs, func(idx int, vx any) (rets []any) {
-		log.Println(idx, vx, gopp.Bytes2Humz(gopp.FileSize(vx.(string))))
+		// log.Println(idx, vx, gopp.Bytes2Humz(gopp.FileSize(vx.(string))))
 		tmpfile := "symfiles/" + filepath.Base(vx.(string)) + ".sym"
 		var lines []string
 		if !gopp.FileExist2(tmpfile) {
@@ -44,9 +48,12 @@ func LoadAllQtSymbols(stub string) []string {
 			gopp.ErrPrint(err, tmpfile)
 			lines = strings.Split(string(bcc), "\n")
 		}
-
 		for _, line := range lines {
-			if strings.Contains(line, stub) && !strings.Contains(line, "Private") {
+			if strings.Contains(line, "Private") {
+				continue
+			}
+
+			if strings.Contains(line, stub) {
 				// log.Println(line)
 				name := gopp.Lastof(strings.Split(line, " ")).Str()
 				signt, ok := Demangle(name)
@@ -57,9 +64,9 @@ func LoadAllQtSymbols(stub string) []string {
 		}
 		return
 	})
-	log.Println(gopp.Lenof(signtx), time.Since(nowt)) // about 1.1s
-	signt := gopp.IV2Strings(signtx.([]any))
+	log.Println(gopp.Lenof(signtx), len(Classes), time.Since(nowt)) // about 1.1s
+	signts := gopp.IV2Strings(signtx.([]any))
 
-	qtsymbolsraw = signt
-	return signt
+	// qtsymbolsraw = signts
+	return signts
 }
