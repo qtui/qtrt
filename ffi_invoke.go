@@ -94,6 +94,7 @@ import (
 	"sync"
 	"unsafe"
 
+	"github.com/ebitengine/purego"
 	"github.com/kitech/gopp"
 )
 
@@ -153,6 +154,10 @@ func InvokeQtFuncByName(symname string, args []uint64, types []int) uint64 {
 
 // //////
 type VRetype = uint64 // interface{}
+type FRetype struct {
+	H uint64
+	L uint64
+}
 
 var debugFFICall = false
 
@@ -166,13 +171,13 @@ func init() {
 func SetDebugFFICall(on bool) { debugFFICall = on }
 func init() {
 	log.SetFlags(log.Flags() | log.Lshortfile)
-	isLinkedQtlib = check_linked_qtmod()
+	// isLinkedQtlib = check_linked_qtmod()
 	init_ffi_invoke()
 	init_so_ffi_call()
 
 	// TODO maybe run when first qtcall
-	init_destroyedDynSlot()
-	init_callack_inherit()
+	// init_destroyedDynSlot()
+	// init_callack_inherit()
 }
 
 func init_ffi_invoke() {
@@ -338,17 +343,23 @@ func isUndefinedSymbolErr(err error) bool {
 	return err != nil && strings.Contains(err.Error(), ": undefined symbol: ")
 }
 func isNotfoundSymbolErr(err error) bool {
-	return err != nil && strings.Contains(err.Error(), "Symbol not found:")
+	return err != nil &&
+		(strings.Contains(err.Error(), "Symbol not found:") ||
+			// macos???
+			strings.Contains(err.Error(), "symbol not found"))
 }
 
 // 直接使用封装的C++ symbols。好像在这设置没有用啊，符号不同，因为参数表的处理也不同，还是要改生成的调用代码。
-var UseWrapSymbols bool = true // see also qtrt.UseCppSymbols TODO merge
+var UseWrapSymbols bool = false // see also qtrt.UseCppSymbols TODO merge
 
 func refmtSymbolName(symname string) string {
 	return IfElseStr(UseWrapSymbols && strings.HasPrefix(symname, "_Z"), "C"+symname, symname)
 }
 
 func GetQtSymAddr(symname string) unsafe.Pointer {
+	if strings.HasPrefix(symname, "__Z") { // why nm got __Z, but need _Z
+		symname = symname[1:]
+	}
 	symname = refmtSymbolName(symname)
 	return GetQtSymAddrRaw(symname)
 }
@@ -367,7 +378,14 @@ func GetQtSymAddrRaw(symname string) unsafe.Pointer {
 	if debugFFICall {
 		log.Println(fmt.Errorf("Symbol not found: %s", symname))
 	}
-	return nil
+	// rv := cgopp.Dlsym0(symname)
+	rv, err := purego.Dlsym(purego.RTLD_DEFAULT, symname)
+	if err != nil {
+		log.Println(rv, err)
+		// panic(rv)
+	}
+
+	return voidptr(rv)
 }
 
 // TODO

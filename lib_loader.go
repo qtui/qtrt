@@ -3,8 +3,10 @@ package qtrt
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	// "github.com/ebitengine/purego"
+
 	"github.com/kitech/gopp"
 	"github.com/kitech/gopp/cgopp"
 )
@@ -30,7 +32,14 @@ func check_linked_qtmod() bool {
 // 	return modname, nil
 // }
 
-func loadModule(libpath string, modname string) error {
+func loadModule(libpath string, modname string) (err error) {
+	err = loadModuleImpl(libpath, modname)
+	if err == nil {
+		err = loadModuleImpl(libpath, modname+"Inline")
+	}
+	return
+}
+func loadModuleImpl(libpath string, modname string) error {
 	// must endwiths /
 	// todo LD_LIBRARY_PATH
 	// todo DYLD_LIBRARY_PATH
@@ -61,6 +70,8 @@ func loadModule(libpath string, modname string) error {
 			break
 		}
 	}
-	ErrPrint(err, lib, libpath, modname, fnames, libdirs)
+	if strings.HasPrefix(modname, "Inline") && modname != "Inline" {
+		ErrPrint(err, lib, libpath, modname, fnames, libdirs)
+	}
 	return err
 }
