@@ -5,9 +5,11 @@ import (
 	"log"
 	"reflect"
 	"strings"
+	"time"
 
 	// "github.com/kitech/minqt"
 
+	"github.com/kitech/gopp"
 	"github.com/kitech/gopp/cgopp"
 )
 
@@ -27,6 +29,7 @@ type TMCData struct {
 
 	// results
 	ffiargx any
+	freefn  func(any)
 
 	// tmps
 	// gotystr string
@@ -125,7 +128,10 @@ func (me *TMCToQStrref) Match(d *TMCData, conv bool) bool {
 	if "string" == d.gotyo.String() {
 		if strings.HasPrefix(d.ctys, "QString ") && strings.HasSuffix(d.ctys, "&") {
 			if conv {
-				panic("todo")
+				cthis := todoQStringNew(d.goargx.(string))
+				d.ffiargx = cthis
+				d.freefn = todoQStringDtor
+				// panic("todo")
 				//goval := minqt.QStringNew(d.goargx.(string))
 				// d.ffiargx = goval.Cthis
 			}
@@ -133,4 +139,25 @@ func (me *TMCToQStrref) Match(d *TMCData, conv bool) bool {
 		}
 	}
 	return false
+}
+
+// 用于传递参数
+func todoQStringNew(s string) voidptr {
+	// name := "__ZN7QStringC1EPKc" // 符号类型为t，dlsym找不到
+	name := "QStringNew"
+	sym := GetQtSymAddr(name)
+	// cthis := cgopp.Mallocgc(123)
+	s4c := cgopp.CStringaf(s)
+	cthis := cgopp.FfiCall[voidptr](sym, s4c)
+	if cthis != nil {
+		time.AfterFunc(gopp.DurandSec(3, 3), func() { todoQStringDtor(cthis) })
+	}
+	return cthis
+}
+
+func todoQStringDtor(vx any) {
+	name := "QStringDtor"
+	sym := GetQtSymAddr(name)
+	cgopp.FfiCall[int](sym, vx.(voidptr))
+	// log.Println(name, vx)
 }

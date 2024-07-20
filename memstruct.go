@@ -120,7 +120,7 @@ func SplitArgs(s string) (rets []string) {
 	pos2 := strings.LastIndex(s, ")")
 
 	mid := s[pos1+1 : pos2]
-	gopp.ZeroPrint(mid, "Empty args?", s)
+	// gopp.ZeroPrint(mid, "Empty args?", s)
 	if mid == "" {
 		return
 	}

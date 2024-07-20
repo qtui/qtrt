@@ -1,6 +1,9 @@
 package qtrt
 
 import (
+	"bytes"
+	"encoding/gob"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -20,9 +23,26 @@ var qtsymbolsloaded = false
 func LoadAllQtSymbols(stub string) []string {
 	log.Println(qtlibpaths)
 	if qtsymbolsloaded {
+		log.Println("Already loaded???", len(Classes))
 		return nil
 	}
 	qtsymbolsloaded = true
+
+	// loadcacheok := loadsymbolsjson()
+	loadcacheok := loadsymbolsgob()
+
+	if loadcacheok {
+		return nil
+	} else {
+		rets := implLoadAllQtSymbols(stub)
+		savesymbolsjson()
+		savesymbolsgob()
+		return rets
+	}
+}
+
+func implLoadAllQtSymbols(stub string) []string {
+	// log.Println(qtlibpaths)
 	var nowt = time.Now()
 
 	libpfx := gopp.Mustify(os.UserHomeDir())[0].Str() + "/.nix-profile/lib"
@@ -33,6 +53,7 @@ func LoadAllQtSymbols(stub string) []string {
 		return filepath.Base(vx.(string))
 	})
 	log.Println(gopp.FirstofGv(libs), libnames, len(libs))
+	log.Println("Maybe use about little secs...")
 	signtx := gopp.Mapdo(libs, func(idx int, vx any) (rets []any) {
 		// log.Println(idx, vx, gopp.Bytes2Humz(gopp.FileSize(vx.(string))))
 		tmpfile := "symfiles/" + filepath.Base(vx.(string)) + ".sym"
@@ -69,4 +90,56 @@ func LoadAllQtSymbols(stub string) []string {
 
 	// qtsymbolsraw = signts
 	return signts
+}
+
+func savesymbolsjson() {
+	nowt := time.Now()
+	bcc, err := json.Marshal(Classes)
+	gopp.ErrPrint(err)
+	gopp.SafeWriteFile("QtClasses.json", bcc, 0644)
+	bcc = nil
+	// jsonenc 106.696382ms
+	log.Println("jsonenc", time.Since(nowt))
+}
+func loadsymbolsjson() bool {
+	if !gopp.FileExist2("QtClasses.json") {
+		return false
+	}
+	nowt := time.Now()
+	bcc, err := os.ReadFile("QtClasses.json")
+	gopp.ErrPrint(err)
+	Classes = nil
+	err = json.Unmarshal(bcc, &Classes)
+	gopp.ErrPrint(err)
+	log.Println("decode big json", time.Since(nowt)) // about 400ms
+	bcc = nil
+
+	return err == nil
+}
+
+func savesymbolsgob() {
+	nowt := time.Now()
+	var buf = bytes.NewBuffer(nil)
+	enco := gob.NewEncoder(buf)
+	err := enco.Encode(Classes)
+	gopp.ErrPrint(err)
+	gopp.SafeWriteFile("QtClasses.gob", buf.Bytes(), 0644)
+	// gobenc 75.741979ms
+	log.Println("gobenc", time.Since(nowt))
+}
+func loadsymbolsgob() bool {
+	if !gopp.FileExist2("QtClasses.gob") {
+		return false
+	}
+
+	nowt := time.Now()
+	bcc, err := os.ReadFile("QtClasses.gob")
+	gopp.ErrPrint(err)
+	buf := bytes.NewReader(bcc)
+	deco := gob.NewDecoder(buf)
+	err = deco.Decode(&Classes)
+	gopp.ErrPrint(err)
+	log.Println("gobdec", time.Since(nowt))
+
+	return err == nil
 }
