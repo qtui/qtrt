@@ -23,7 +23,7 @@ var qtsymbolsloaded = false
 func LoadAllQtSymbols(stub string) []string {
 	log.Println(qtlibpaths)
 	if qtsymbolsloaded {
-		log.Println("Already loaded???", len(Classes))
+		log.Println("Already loaded???", len(QtSymbols))
 		return nil
 	}
 	qtsymbolsloaded = true
@@ -56,19 +56,9 @@ func implLoadAllQtSymbols(stub string) []string {
 	log.Println("Maybe use about little secs...")
 	signtx := gopp.Mapdo(libs, func(idx int, vx any) (rets []any) {
 		// log.Println(idx, vx, gopp.Bytes2Humz(gopp.FileSize(vx.(string))))
-		tmpfile := "symfiles/" + filepath.Base(vx.(string)) + ".sym"
-		var lines []string
-		if !gopp.FileExist2(tmpfile) {
-			lines, err := gopp.RunCmd(".", "nm", vx.(string))
-			gopp.ErrPrint(err, vx)
-			log.Println(idx, vx, len(lines))
-			// save cache
-			gopp.SafeWriteFile(tmpfile, []byte(strings.Join(lines, "\n")), 0644)
-		} else {
-			bcc, err := os.ReadFile(tmpfile)
-			gopp.ErrPrint(err, tmpfile)
-			lines = strings.Split(string(bcc), "\n")
-		}
+		lines, err := gopp.RunCmd(".", "nm", vx.(string))
+		gopp.ErrPrint(err, vx)
+		// log.Println(idx, vx, len(lines))
 		for _, line := range lines {
 			if strings.Contains(line, "Private") {
 				continue
@@ -85,33 +75,40 @@ func implLoadAllQtSymbols(stub string) []string {
 		}
 		return
 	})
-	log.Println(gopp.Lenof(signtx), len(Classes), time.Since(nowt)) // about 1.1s
+	log.Println(gopp.Lenof(signtx), len(QtSymbols), time.Since(nowt)) // about 1.1s
 	signts := gopp.IV2Strings(signtx.([]any))
 
 	// qtsymbolsraw = signts
 	return signts
 }
 
+// /// structured symbols cache
+const qtsymcachenamejson = "qtsymbols.json"
+const qtsymcachenamegob = "qtsymbols.gob"
+
 func savesymbolsjson() {
 	nowt := time.Now()
-	bcc, err := json.Marshal(Classes)
+	bcc, err := json.Marshal(QtSymbols)
 	gopp.ErrPrint(err)
-	gopp.SafeWriteFile("QtClasses.json", bcc, 0644)
+	gopp.SafeWriteFile(qtsymcachenamejson, bcc, 0644)
 	bcc = nil
 	// jsonenc 106.696382ms
-	log.Println("jsonenc", time.Since(nowt))
+	log.Println("jsonenc", time.Since(nowt), qtsymcachenamejson)
 }
 func loadsymbolsjson() bool {
-	if !gopp.FileExist2("QtClasses.json") {
+	if !gopp.FileExist2(qtsymcachenamejson) {
 		return false
 	}
+	QtSymbols = nil
+
 	nowt := time.Now()
-	bcc, err := os.ReadFile("QtClasses.json")
+	bcc, err := os.ReadFile(qtsymcachenamejson)
 	gopp.ErrPrint(err)
-	Classes = nil
-	err = json.Unmarshal(bcc, &Classes)
+
+	err = json.Unmarshal(bcc, &QtSymbols)
 	gopp.ErrPrint(err)
-	log.Println("decode big json", time.Since(nowt)) // about 400ms
+	// about 400ms
+	log.Println("decode big json", time.Since(nowt), qtsymcachenamejson)
 	bcc = nil
 
 	return err == nil
@@ -121,25 +118,32 @@ func savesymbolsgob() {
 	nowt := time.Now()
 	var buf = bytes.NewBuffer(nil)
 	enco := gob.NewEncoder(buf)
-	err := enco.Encode(Classes)
+	err := enco.Encode(QtSymbols)
 	gopp.ErrPrint(err)
-	gopp.SafeWriteFile("QtClasses.gob", buf.Bytes(), 0644)
+	gopp.SafeWriteFile(qtsymcachenamegob, buf.Bytes(), 0644)
 	// gobenc 75.741979ms
-	log.Println("gobenc", time.Since(nowt))
+	log.Println("gobenc", time.Since(nowt), qtsymcachenamegob)
 }
 func loadsymbolsgob() bool {
-	if !gopp.FileExist2("QtClasses.gob") {
+	if !gopp.FileExist2(qtsymcachenamegob) {
 		return false
 	}
 
+	QtSymbols = nil
+
 	nowt := time.Now()
-	bcc, err := os.ReadFile("QtClasses.gob")
+	fo, err := os.Open(qtsymcachenamegob)
 	gopp.ErrPrint(err)
-	buf := bytes.NewReader(bcc)
-	deco := gob.NewDecoder(buf)
-	err = deco.Decode(&Classes)
+	if err != nil {
+		return false
+	}
+	defer fo.Close()
+
+	deco := gob.NewDecoder(fo)
+	err = deco.Decode(&QtSymbols)
 	gopp.ErrPrint(err)
-	log.Println("gobdec", time.Since(nowt))
+	// 37.778846ms - 45.944927ms
+	log.Println("gobdec", time.Since(nowt), qtsymcachenamegob)
 
 	return err == nil
 }

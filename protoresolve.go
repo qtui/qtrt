@@ -39,13 +39,17 @@ func getclzmthbycaller() (clz string, mth string) {
 	return
 }
 
+// static call 用的不多，后续再考虑
+const CppStaticCall = 0x3
+
+// static call: cobj == 0x3
 // like jit, name jitqt
 func Callany(cobj voidptr, args ...any) voidptr {
 	clzname, mthname := getclzmthbycaller()
 	log.Println(clzname, mthname, cobj, args)
 	isctor := clzname == mthname
 
-	mths, ok := Classes[clzname]
+	mths, ok := QtSymbols[clzname]
 	gopp.FalsePrint(ok, "not found???", clzname)
 
 	//
@@ -215,7 +219,7 @@ func resolvebyargty(tys []reflect.Type, mths []ccMethod) (rets []ccMethod) {
 			}
 		}
 		if allmat {
-			log.Println(gopp.MyFuncName(), "rc", mtho.CCCrc, mtho.CCSym)
+			log.Println(gopp.MyFuncName(), "rc", mtho.CCSym)
 			rets = append(rets, mtho)
 		}
 	}
@@ -227,7 +231,7 @@ func resolvebyname(mthname string, mths []ccMethod) (rets []ccMethod) {
 	for _, mtho := range mths {
 		// log.Println(mtho.Name)
 		if mtho.Name == mthname {
-			log.Println(gopp.MyFuncName(), "rc", mthname, mtho.CCCrc, mtho.CCSym)
+			log.Println(gopp.MyFuncName(), "rc", mthname, mtho.CCSym)
 			rets = append(rets, mtho)
 		}
 	}
@@ -242,7 +246,7 @@ func resolvebyargc(argc int, mths []ccMethod) (rets []ccMethod) {
 		vec := SplitArgs(sgnt)
 		// log.Println(vec)
 		if len(vec) == argc {
-			log.Println(gopp.MyFuncName(), "rc", mtho.CCCrc, mtho.CCSym)
+			log.Println(gopp.MyFuncName(), "rc", mtho.CCSym)
 			rets = append(rets, mtho)
 		}
 		// }

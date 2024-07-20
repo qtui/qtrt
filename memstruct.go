@@ -1,46 +1,63 @@
 package qtrt
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/kitech/gopp"
 )
 
-var Classes = map[string][]ccMethod{} // class name => struct type
+// symbol info from qtlib, contains args type info,
+// but lack some info like, return type, static, class size
+var QtSymbols = map[string][]ccMethod{} // class name => struct type
+var QtClassSizes = map[string]int{}     // todo
+
 type ccMethod struct {
 	// reflect.Method
 
 	// 89M => 77M/79M
 	// thin version of reflect.Method
-	Name    string
-	Index   int
-	PkgPath string
+	Name string // `json:"N"`
+	// Index   int
+	// PkgPath string
 
-	Static bool
-	CCSym  string
-	CCCrc  uint64
+	CCSym string // `json:"S"` // 存储的去掉classname的部分
+	// CCCrc  uint64
+
+	// TODO how
+	// Rety string // `json:"R"`
+	// Size int    // `json:"Z"`
+	St int // `json:"T"` //bool
 }
+
+//	func (me ccMethod) Symbol(clz string) string {
+//		return qtmthsymrestore(clz, me.Name, me.Sym)
+//	}
+func (me ccMethod) Static() bool { return me.St == 1 }
+
+// \see https://web.mit.edu/tibbetts/Public/inside-c/www/mangling.html
+func (me ccMethod) Const() bool { return strings.HasPrefix(me.CCSym, "_ZNK") }
 
 var Symdedups = map[uint64]int{} // sym crc =>
 var Symdedupedcnt = 0
 
-func Addsymrawline(qtmodename string, line string) {
+func Addsymrawline(qtmodname string, line string) {
 	flds := strings.Split(line, " ")
 	// log.Println(line, flds)
 	sym := gopp.LastofGv(flds)
 	// log.Println(sym)
-	addsym(sym)
+	addqtsym(qtmodname, sym)
 }
-func addsym(name string) {
-	// log.Println("demangle...", len(name), name)
-	sgnt, ok := Demangle(name)
-	if strings.HasPrefix(name, "GCC_except") {
-	} else if strings.HasPrefix(name, "_OBJC_") {
-	} else if strings.Contains(name, "QtPrivate") {
+func addqtsym(qtmodname, symname string) {
+	// log.Println("demangle...", len(symname), symname)
+	sgnt, ok := Demangle(symname)
+	if strings.HasPrefix(symname, "GCC_except") {
+	} else if strings.HasPrefix(symname, "_OBJC_") {
+	} else if strings.Contains(symname, "QtPrivate") {
 	} else {
-		// gopp.FalsePrint(ok, "demangle failed", name)
+		// gopp.FalsePrint(ok, "demangle failed", symname)
 	}
-	// log.Println(ok, len(name), "=>", len(sgnt), sgnt, ok)
+	// log.Println(ok, len(symname), "=>", len(sgnt), sgnt, ok)
 	if !ok {
 		return
 	}
@@ -70,30 +87,34 @@ func addsym(name string) {
 		return
 	}
 	// log.Println(clzname, mthname, sgnt)
-	mths, ok := Classes[clzname]
-	if ok {
-	} else {
-		Classes[clzname] = nil
+	if clzname == "$_0" || clzname == "$_5" {
+		// log.Println("wtf", qtmodname, symname)
+		return
 	}
-	mtho := ccMethod{}
-	mtho.CCSym = name
-	mtho.CCCrc = gopp.Crc64Str(name)
+	if clzname[0] != 'Q' {
+		// log.Println("wtf", qtmodname, clzname, mthname, symname)
+		return
+	}
 
-	if _, ok := Symdedups[mtho.CCCrc]; ok {
+	symcrc := gopp.Crc64Str(symname)
+	if _, ok := Symdedups[symcrc]; ok {
 		// log.Println("already have", sgnt, len(dedups))
 		Symdedupedcnt++
 		return
 	}
-	defer func() { Symdedups[mtho.CCCrc] = 1 }()
+	Symdedups[symcrc] = 1
 
+	mtho := ccMethod{}
+	mtho.CCSym = symname
+	// mtho.Sym = qtmthsymshorten(clzname, mthname, symname)
+	// mtho.CCCrc = symcrc
 	mtho.Name = strings.Title(mthname)
-	mtho.Index = len(mths)
-	// mtho.Type = nil
-	// mtho.Func = reflect.Value{}
-	mtho.PkgPath = "hhpkg"
+	// mtho.Index = len(mths)
+	// mtho.PkgPath = qtmodname
 
+	mths, ok := QtSymbols[clzname]
 	mths = append(mths, mtho)
-	Classes[clzname] = mths
+	QtSymbols[clzname] = mths
 }
 
 func SplitMethod(s string) (string, string) {
@@ -128,4 +149,22 @@ func SplitArgs(s string) (rets []string) {
 	rets = strings.Split(mid, ", ")
 
 	return
+}
+
+// 去掉前缀 __ZN
+// 替换类名为.
+// 替换方法名为,
+func qtmthsymshorten(clz string, mth string, symname string) string {
+	ct := fmt.Sprintf("%d%s", len(clz), clz)
+	mt := fmt.Sprintf("%d%s", len(mth), mth)
+	rv := strings.Replace(symname[4:], ct, ".", 1)
+	rv = strings.Replace(rv, mt, ",", 1)
+	return rv
+}
+func qtmthsymrestore(clz string, mth string, symname string) string {
+	ct := fmt.Sprintf("%d%s", len(clz), clz)
+	mt := fmt.Sprintf("%d%s", len(mth), mth)
+	rv := strings.Replace(symname, ".", ct, 1)
+	rv = strings.Replace(rv, ",", mt, 1)
+	return "__ZN" + rv
 }
