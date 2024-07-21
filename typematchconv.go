@@ -11,6 +11,7 @@ import (
 
 	"github.com/kitech/gopp"
 	"github.com/kitech/gopp/cgopp"
+	"github.com/qtui/qtclzsz"
 )
 
 type TypeMatcher interface {
@@ -144,12 +145,14 @@ func (me *TMCToQStrref) Match(d *TMCData, conv bool) bool {
 // 用于传递参数
 func todoQStringNew(s string) voidptr {
 	// name := "__ZN7QStringC1EPKc" // 符号类型为t，dlsym找不到
-	name := "QStringNew"
+	name := "__ZN7QString8fromUtf8EPKcx"
 	sym := GetQtSymAddr(name)
 	// cthis := cgopp.Mallocgc(123)
+	cthis := cgopp.Malloc(qtclzsz.Get("QString"))
 	s4c := cgopp.CStringaf(s)
-	cthis := cgopp.FfiCall[voidptr](sym, s4c)
+	cgopp.FfiCall[voidptr](sym, cthis, s4c, len(s))
 	if cthis != nil {
+		// runtime.SetFinalizer(cthis, todoQStringDtor2)
 		time.AfterFunc(gopp.DurandSec(3, 3), func() { todoQStringDtor(cthis) })
 	}
 	return cthis

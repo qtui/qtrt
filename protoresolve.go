@@ -90,7 +90,8 @@ func Callany(cobj voidptr, args ...any) voidptr {
 		// }
 		if isctor {
 			clzsz := qtclzsz.Get(clzname)
-			cthis := cgopp.Mallocgc(clzsz)
+			// cthis := cgopp.Mallocgc(clzsz) // cannot destruct for free crash
+			cthis := cgopp.Malloc(clzsz)
 			ccargs := append([]any{cthis}, convedargs...)
 			// log.Println("fficall info", mthname, fnsym, len(args), len(ccargs), ccargs)
 			// cpp ctor 函数是没有返回值的
