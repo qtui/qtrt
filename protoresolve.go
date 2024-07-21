@@ -8,7 +8,9 @@ import (
 
 	"github.com/kitech/gopp"
 	"github.com/kitech/gopp/cgopp"
+
 	// "github.com/qtui/qtrt"
+	"github.com/qtui/qtclzsz"
 )
 
 // only call by callany
@@ -87,7 +89,8 @@ func Callany(cobj voidptr, args ...any) voidptr {
 		fnsym := GetQtSymAddr(mtho.CCSym)
 		// }
 		if isctor {
-			cthis := cgopp.Mallocgc(123)
+			clzsz := qtclzsz.Get(clzname)
+			cthis := cgopp.Mallocgc(clzsz)
 			ccargs := append([]any{cthis}, convedargs...)
 			// log.Println("fficall info", mthname, fnsym, len(args), len(ccargs), ccargs)
 			// cpp ctor 函数是没有返回值的
