@@ -47,13 +47,13 @@ const CppStaticCall = 0x3
 
 // static call: cobj == 0x3
 // like jit, name jitqt
-func Callany(cobj voidptr, args ...any) voidptr {
+func Callany(cobj voidptr, args ...any) gopp.Fatptr {
 	clzname, mthname := getclzmthbycaller()
 	log.Println(clzname, mthname, cobj, args)
 	isctor := clzname == mthname
 
 	mths, ok := qtsyms.QtSymbols[clzname]
-	gopp.FalsePrint(ok, "not found???", clzname)
+	gopp.FalsePrint(ok, "not found???", clzname, qtsyms.InitLoaded)
 
 	//
 	var namercmths []qtsyms.QtMethod // 备份
@@ -74,7 +74,7 @@ func Callany(cobj voidptr, args ...any) voidptr {
 	}
 
 	log.Println("final rcmths:", len(rcmths), rcmths)
-	var ccret voidptr
+	var ccret gopp.Fatptr
 	switch len(rcmths) {
 	case 0:
 		// sowtfuck
@@ -97,12 +97,13 @@ func Callany(cobj voidptr, args ...any) voidptr {
 			// log.Println("fficall info", mthname, fnsym, len(args), len(ccargs), ccargs)
 			// cpp ctor 函数是没有返回值的
 			cgopp.FfiCall[int](fnsym, ccargs...)
-			ccret = cthis
+			// ccret = cthis
+			ccret = gopp.FatptrOf(cthis)
 		} else {
 			// todo
 			ccargs := append([]any{cobj}, convedargs...)
 			// log.Println("fficall info", clzname, mthname, fnsym, len(args), len(ccargs), ccargs)
-			ccret = cgopp.FfiCall[voidptr](fnsym, ccargs...)
+			ccret = cgopp.FfiCall[gopp.Fatptr](fnsym, ccargs...)
 		}
 	default:
 		// sowtfuck

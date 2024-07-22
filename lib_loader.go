@@ -34,6 +34,7 @@ func loadAllModules() {
 	soimgs := cgopp.DyldImagesSelf()
 	soimgs = filterQtsoimages(soimgs)
 
+	gopp.ZeroPrint(len(soimgs), "Exectable not linked to any Qtlib")
 	if len(soimgs) > 0 {
 		isLinkedQtlib = true
 		gopp.Mapdo(soimgs, func(vx any) any {
@@ -51,7 +52,11 @@ func loadAllModules() {
 	} else {
 		for _, modname := range mainqtmods {
 			// libpath := getLibFile(getLibDirp(), modname)
-			loadModule("", modname)
+			err := loadModule("", modname)
+			// gopp.ErrPrint(err, modname)
+			err = loadModule("", modname+"Inline")
+			// gopp.ErrPrint(err, modname+"Inline")
+			_ = err
 		}
 	}
 }
@@ -206,14 +211,23 @@ func loadModuleImpl(libpath string, modname string) error {
 	// todo windows...
 	// todo diffenece os, diffence libdirs/fnames
 	libdirs := []string{"", "./", "/opt/qt/lib/", "/usr/lib/", "/usr/lib64/", "/usr/local/lib/", "/usr/local/opt/qt/lib/", gopp.Mustify1(os.UserHomeDir()) + "/.nix-profile/lib/"}
+	for _, envname := range []string{"LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH"} {
+		envldpath := os.Getenv(envname)
+		if len(envldpath) == 0 {
+			continue
+		}
+		fld := strings.Split(envldpath, ":")
+		libdirs = append(libdirs, fld...)
+	}
 	libpath = gopp.IfElse2(libpath == "", "Qt5"+modname, libpath)
-	fnames := []string{libpath, "Qt" + modname,
+	fnames := []string{libpath, "Qt" + modname, "libQt" + modname + ".dylib",
 		fmt.Sprintf("Qt%s.framework/Versions/Qt%s", modname, modname),
 		fmt.Sprintf("Qt%s.framework/Versions/5/Qt%s", modname, modname),
 		fmt.Sprintf("Qt%s.framework/Versions/6/Qt%s", modname, modname),
 		fmt.Sprintf("Qt%s.framework/Versions/7/Qt%s", modname, modname),
 		fmt.Sprintf("Qt%s.framework/Versions/A/Qt%s", modname, modname),
 	}
+	// log.Println(fnames)
 
 	// log.Println(libpath, modname)
 	var err error = os.ErrNotExist
