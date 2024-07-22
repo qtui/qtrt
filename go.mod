@@ -27,10 +27,12 @@ require (
 replace github.com/qtui/miscutil => ../miscutil
 
 replace github.com/qtui/qtclzsz => ../qtclzsz
+replace github.com/qtui/qtsyms => ../qtsyms
 
 require (
 	github.com/kitech/gopp/cgopp v0.0.0
 	github.com/qtui/qtclzsz v0.0.0
+    github.com/qtui/qtsyms v0.0.0
 )
 
 replace github.com/kitech/gopp => ../../goplusplus

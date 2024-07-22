@@ -11,6 +11,7 @@ import (
 
 	// "github.com/qtui/qtrt"
 	"github.com/qtui/qtclzsz"
+	"github.com/qtui/qtsyms"
 )
 
 // only call by callany
@@ -51,11 +52,11 @@ func Callany(cobj voidptr, args ...any) voidptr {
 	log.Println(clzname, mthname, cobj, args)
 	isctor := clzname == mthname
 
-	mths, ok := QtSymbols[clzname]
+	mths, ok := qtsyms.QtSymbols[clzname]
 	gopp.FalsePrint(ok, "not found???", clzname)
 
 	//
-	var namercmths []ccMethod // 备份
+	var namercmths []qtsyms.QtMethod // 备份
 	var rcmths = mths
 
 	rcmths = resolvebyname(mthname, rcmths)
@@ -109,7 +110,7 @@ func Callany(cobj voidptr, args ...any) voidptr {
 	return ccret
 }
 
-func resolvebyctorno(mths []ccMethod) (rets []ccMethod) {
+func resolvebyctorno(mths []qtsyms.QtMethod) (rets []qtsyms.QtMethod) {
 	// bye C1E, C2E, C3E?
 	c2idx := -1
 	c1idx := -1
@@ -190,10 +191,10 @@ func qttypemathch(idx int, tystr string, tyo reflect.Type, conv bool, argx any) 
 	return rvx, tymat
 }
 
-func argsconvert(mtho ccMethod, tys []reflect.Type, args ...any) (rets []any) {
-	sgnt, _ := Demangle(mtho.CCSym)
+func argsconvert(mtho qtsyms.QtMethod, tys []reflect.Type, args ...any) (rets []any) {
+	sgnt, _ := qtsyms.Demangle(mtho.CCSym)
 	// log.Println(sgnt, mtho.CCSym)
-	vec := SplitArgs(sgnt)
+	vec := qtsyms.SplitArgs(sgnt)
 	log.Println(len(vec), vec, sgnt)
 
 	for j := 0; j < len(vec); j++ {
@@ -206,13 +207,13 @@ func argsconvert(mtho ccMethod, tys []reflect.Type, args ...any) (rets []any) {
 	return
 }
 
-func resolvebyargty(tys []reflect.Type, mths []ccMethod) (rets []ccMethod) {
+func resolvebyargty(tys []reflect.Type, mths []qtsyms.QtMethod) (rets []qtsyms.QtMethod) {
 	for _, mtho := range mths {
 		// log.Println(mtho.Name)
 
-		sgnt, _ := Demangle(mtho.CCSym)
+		sgnt, _ := qtsyms.Demangle(mtho.CCSym)
 		// log.Println(sgnt, mtho.CCSym)
-		vec := SplitArgs(sgnt)
+		vec := qtsyms.SplitArgs(sgnt)
 		log.Println(len(vec), vec, sgnt)
 
 		allmat := true
@@ -230,7 +231,7 @@ func resolvebyargty(tys []reflect.Type, mths []ccMethod) (rets []ccMethod) {
 	return
 }
 
-func resolvebyname(mthname string, mths []ccMethod) (rets []ccMethod) {
+func resolvebyname(mthname string, mths []qtsyms.QtMethod) (rets []qtsyms.QtMethod) {
 
 	for _, mtho := range mths {
 		// log.Println(mtho.Name)
@@ -241,13 +242,13 @@ func resolvebyname(mthname string, mths []ccMethod) (rets []ccMethod) {
 	}
 	return
 }
-func resolvebyargc(argc int, mths []ccMethod) (rets []ccMethod) {
+func resolvebyargc(argc int, mths []qtsyms.QtMethod) (rets []qtsyms.QtMethod) {
 	for _, mtho := range mths {
 		// log.Println(mtho.Name)
 		// if mtho.Type.NumIn() == argc {
-		sgnt, _ := Demangle(mtho.CCSym)
+		sgnt, _ := qtsyms.Demangle(mtho.CCSym)
 		// log.Println(sgnt, mtho.CCSym)
-		vec := SplitArgs(sgnt)
+		vec := qtsyms.SplitArgs(sgnt)
 		// log.Println(vec)
 		if len(vec) == argc {
 			log.Println(gopp.MyFuncName(), "rc", mtho.CCSym)
