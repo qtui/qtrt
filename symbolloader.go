@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ebitengine/purego"
 	"github.com/kitech/gopp"
 )
 
@@ -45,6 +46,7 @@ func implLoadAllQtSymbols(stub string) []string {
 	// log.Println(qtlibpaths)
 	var nowt = time.Now()
 
+	// todo 还要查找inline动态库
 	libpfx := gopp.Mustify(os.UserHomeDir())[0].Str() + "/.nix-profile/lib"
 	globtmpl := fmt.Sprintf("%s/Qt*.framework/Qt*", libpfx)
 	libs, err := filepath.Glob(globtmpl)
@@ -53,6 +55,31 @@ func implLoadAllQtSymbols(stub string) []string {
 		return filepath.Base(vx.(string))
 	})
 	log.Println(gopp.FirstofGv(libs), libnames, len(libs))
+	// inlineds := []string{}
+	gopp.Mapdo(libs, func(idx int, v string) {
+		libnames := qtmod2rclibnames(v, true)
+
+		for _, libname := range libnames {
+			dlh, err := purego.Dlopen(libname, purego.RTLD_LAZY)
+			if err != nil {
+				continue
+			}
+			purego.Dlclose(dlh)
+			// log.Println(v, libname)
+
+			libfile := findmoduleBylibname(libname)
+			if gopp.Empty(libfile) {
+				continue
+			}
+
+			lines, err := gopp.RunCmd(".", "nm", libfile)
+			gopp.ErrPrint(err, v)
+			// log.Println(idx, libname, len(lines), libfile)
+			for _, line := range lines {
+				Addsymrawline(filepath.Base(v), line)
+			}
+		}
+	})
 	log.Println("Maybe use about little secs...")
 	signtx := gopp.Mapdo(libs, func(idx int, vx any) (rets []any) {
 		// log.Println(idx, vx, gopp.Bytes2Humz(gopp.FileSize(vx.(string))))

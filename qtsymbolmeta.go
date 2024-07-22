@@ -2,6 +2,7 @@ package qtrt
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/kitech/gopp"
@@ -76,6 +77,9 @@ func addqtsym(qtmodname, symname string) {
 	if strings.Contains(sgnt, "anonymous namespace") {
 		return
 	}
+	if strings.Count(sgnt, "<") > 0 {
+		return
+	}
 
 	clzname, mthname := SplitMethod(sgnt)
 	if clzname == "" || mthname == "" {
@@ -87,13 +91,17 @@ func addqtsym(qtmodname, symname string) {
 		return
 	}
 	// log.Println(clzname, mthname, sgnt)
-	if clzname == "$_0" || clzname == "$_5" {
+	if clzname == "$_0" || clzname == "$_5" || clzname == "Qt" {
 		// log.Println("wtf", qtmodname, symname)
 		return
 	}
 	if clzname[0] != 'Q' {
 		// log.Println("wtf", qtmodname, clzname, mthname, symname)
 		return
+	}
+
+	if strings.Count(clzname, " ") > 0 {
+		log.Println("wtf", sgnt)
 	}
 
 	symcrc := gopp.Crc64Str(symname)

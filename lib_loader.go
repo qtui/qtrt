@@ -37,7 +37,7 @@ func loadAllModules() {
 	if len(soimgs) > 0 {
 		isLinkedQtlib = true
 		gopp.Mapdo(soimgs, func(vx any) any {
-			mod := qtlibname2mod(vx.(string))
+			mod := (vx.(string))
 			log.Println(mod, vx)
 			dlh, err := NewFFILibrary(vx.(string))
 			gopp.ErrPrint(err, vx)
@@ -104,6 +104,21 @@ func qtlibname2link(nameorpath string) string {
 	return bname
 }
 
+// nameorpath
+func qtmod2rclibnames(nameorpath string, incinline bool) (rets []string) {
+	mod := qtlibname2mod(nameorpath)
+	rets = gopp.Sliceof("Qt"+mod, "Qt6"+mod,
+		"libQt"+mod+".so", "libQt"+mod+".dylib", "libQt"+mod+".dll",
+		"libQt6"+mod+".so", "libQt6"+mod+".dylib", "libQt6"+mod+".dll",
+	)
+	if incinline {
+		rets = append(rets,
+			"libQt"+mod+"Inline.so", "libQt"+mod+"Inline.dylib", "libQt"+mod+"Inline.dll",
+		)
+	}
+	return
+}
+
 func loadModuleFullpath(fullpath string, modname string) {
 
 }
@@ -124,6 +139,65 @@ func loadModule(libpath string, modname string) (err error) {
 
 // 	return modname, nil
 // }
+
+// basename like libQtCore.so
+// search in libdirs
+func findmoduleBylibname(libname string) string {
+	libdirs := getsyslibdirs()
+	for _, libdir := range libdirs {
+		libfile := filepath.Join(libdir, libname)
+		if gopp.FileExist2(libfile) {
+			return libfile
+		}
+	}
+	return ""
+}
+
+func getsyslibdirs() []string {
+	libdirs := []string{"", "./", "/opt/qt/lib/", "/usr/lib/", "/usr/lib64/", "/usr/local/lib/", "/usr/local/opt/qt/lib/", gopp.Mustify1(os.UserHomeDir()) + "/.nix-profile/lib/"}
+
+	for _, envname := range []string{"LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH"} {
+		envldpath := os.Getenv(envname)
+		if len(envldpath) == 0 {
+			continue
+		}
+		fld := strings.Split(envldpath, ":")
+		libdirs = append(libdirs, fld...)
+	}
+
+	qmakepath, err := Which("qmake")
+	// log.Println(qmakepath, err)
+	if err == nil {
+		qmakedir := filepath.Dir(qmakepath)
+		qmakelibdir1 := filepath.Join(qmakedir, "../lib")
+		qmakelibdir2 := filepath.Join(qmakedir, "../lib64")
+		libdirs = append(libdirs, qmakelibdir1, qmakelibdir2)
+
+		rets, err := filepath.Glob(qmakelibdir1 + "/Qt*.framework")
+		if err == nil {
+			libdirs = append(libdirs, rets...)
+		}
+		// log.Println(rets)
+		rets, err = filepath.Glob(qmakelibdir2 + "/Qt*.framework")
+		if err == nil {
+			libdirs = append(libdirs, rets...)
+		}
+		// log.Println(rets)
+	}
+
+	return libdirs
+}
+
+func Which(name string) (string, error) {
+	lines, err := gopp.RunCmd(".", "which", name)
+	if err != nil {
+		return "", err
+	}
+	if len(lines) == 0 {
+		return "", os.ErrNotExist
+	}
+	return gopp.FirstofGv(lines), nil
+}
 
 func loadModuleImpl(libpath string, modname string) error {
 	// must endwiths /
