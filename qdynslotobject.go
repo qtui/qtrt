@@ -43,6 +43,9 @@ func NewQDynSlotObject(signalName string, argc int) *QDynSlotObject {
 	rv, err := InvokeQtFunc6("QDynSlotObject_new", FFI_TYPE_POINTER,
 		fnptr_, name_, argc_, argtys_, cbptr_)
 	ErrPrint(err, rv)
+	// fnsym := GetQtSymAddr("QDynSlotObject_new")
+	// rv := cgopp.FfiCall[voidptr](fnsym, fnptr_, name_, argc_, argtys_, cbptr_)
+	// NilPrint(rv, signalName, argc)
 
 	this.cthis = unsafe.Pointer(uintptr(rv))
 	SetFinalizer(this, DeleteQDynSlotObject)
@@ -50,6 +53,8 @@ func NewQDynSlotObject(signalName string, argc int) *QDynSlotObject {
 }
 
 func DeleteQDynSlotObject(o *QDynSlotObject) {
+	// fnsym := GetQtSymAddr("QDynSlotObject_delete")
+	// cgopp.FfiCall[int](fnsym, o.cthis)
 	rv, err := InvokeQtFunc6("QDynSlotObject_delete", FFI_TYPE_VOID, o.cthis)
 	ErrPrint(err, rv)
 }
@@ -124,11 +129,14 @@ func (*QDynSlotObject) _ConnectSwitch(src unsafe.Pointer, signame string, on boo
 		qt.ConnectSignal(subDynSlot.cthis, signamep, subDynSlot)
 	}
 
+	// fnsym := GetQtSymAddr("QDynSlotObject_connect_switch")
 	if on {
+		// cgopp.FfiCall[int](fnsym, src, signame_, subDynSlot.cthis, int(1))
 		rv, err := InvokeQtFunc6("QDynSlotObject_connect_switch", FFI_TYPE_VOID,
 			src, signame_, subDynSlot.cthis, int(1))
 		ErrPrint(err, rv)
 	} else {
+		// cgopp.FfiCall[int](fnsym, src, signame_, subDynSlot.cthis, int(0))
 		rv, err := InvokeQtFunc6("QDynSlotObject_connect_switch", FFI_TYPE_VOID,
 			src, signame_, subDynSlot.cthis, int(0))
 		ErrPrint(err, rv)
@@ -146,6 +154,8 @@ func DisconnectAll(cobj CObjectITF) {
 	var convArg0 unsafe.Pointer
 	var convArg1 unsafe.Pointer
 	var convArg2 unsafe.Pointer
+	// fnsym := GetQtSymAddr("_ZNK7QObject10disconnectEPKcPKS_S1_")
+	// cgopp.FfiCall[voidptr](fnsym, cobj.GetCthis(), convArg0, convArg1, convArg2)
 	rv, err := InvokeQtFunc6("_ZNK7QObject10disconnectEPKcPKS_S1_", FFI_TYPE_POINTER, cobj.GetCthis(), convArg0, convArg1, convArg2)
 	ErrPrint(err, rv)
 }
@@ -212,6 +222,9 @@ func ConnectRaw(sender unsafe.Pointer, signal string, receiver unsafe.Pointer, m
 func QObjectGetSignatureByName(qobj CObjectITF, name string) (string, error) {
 	var convArg1 = CString(name)
 	defer FreeMem(convArg1)
+	// fnsym := GetQtSymAddr("QObject_get_meta_signature_by_name")
+	// log.Println(fnsym, name)
+	// rv := cgopp.FfiCall[voidptr](fnsym, qobj.GetCthis(), convArg1)
 	rv, err := InvokeQtFunc6("QObject_get_meta_signature_by_name", FFI_TYPE_POINTER, qobj.GetCthis(), convArg1)
 	ErrPrint(err, rv)
 	switch rv {
@@ -232,7 +245,9 @@ var destroyedDynSlot *QDynSlotObject
 var destroyedSingalName = "destroyed(QObject*)"
 var destroyedSingalNamep = QSIGNAL(destroyedSingalName)
 
-func init_destroyedDynSlot() { destroyedDynSlot = NewQDynSlotObject("destroyed(QObject*)", 0) }
+func init_destroyedDynSlot() {
+	destroyedDynSlot = NewQDynSlotObject("destroyed(QObject*)", 0)
+}
 func ConnectDestroyed(senderCobj CObjectITF, className string) {
 	f := getOnQObjectDestroyed(senderCobj, className)
 	((*QDynSlotObject)(nil))._Connect(senderCobj, destroyedSingalName, f)

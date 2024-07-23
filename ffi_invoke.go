@@ -96,6 +96,7 @@ import (
 
 	"github.com/ebitengine/purego"
 	"github.com/kitech/gopp"
+	"github.com/kitech/gopp/cgopp"
 )
 
 func itype2stype(itype byte) *C.ffi_type {
@@ -176,8 +177,8 @@ func init() {
 	init_so_ffi_call()
 
 	// TODO maybe run when first qtcall
-	// init_destroyedDynSlot()
-	// init_callack_inherit()
+	init_destroyedDynSlot()
+	init_callack_inherit() //
 }
 
 func init_ffi_invoke() {
@@ -293,11 +294,14 @@ func InvokeQtFunc6(symname string, retype byte, args ...interface{}) (VRetype, e
 		log.Println("FFI Call:", symname, addr, "retype=", retype, "argc=", len(args))
 	}
 
-	argtys, argvals, argrefps := convArgs(args...)
-	_ = argrefps
-	var retval C.uint64_t = 0
-	_, cok := C.ffi_call_ex(addr, C.int(retype), &retval, C.int(len(args)),
-		(*C.uint8_t)(&argtys[0]), (*C.uint64_t)(&argvals[0]))
+	// argtys, argvals, argrefps := convArgs(args...)
+	// _ = argrefps
+	// var retval C.uint64_t = 0
+	// _, cok := C.ffi_call_ex(addr, C.int(retype), &retval, C.int(len(args)),
+	// 	(*C.uint8_t)(&argtys[0]), (*C.uint64_t)(&argvals[0]))
+	var cok error
+	retval := cgopp.FfiCall[uint64](addr, args...)
+
 	if debugFFICall {
 		ErrPrint(cok, symname, retype, len(args))
 	}

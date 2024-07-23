@@ -138,21 +138,25 @@ func callbackInheritInvokeDefault(f interface{}, args ...interface{}) interface{
 func setAllInheritCallback2c(name string, fnptr unsafe.Pointer) {
 	symname := fmt.Sprintf("set_callback%s", name)
 	InvokeQtFunc6(symname, FFI_TYPE_VOID, fnptr)
+	// fnsym := GetQtSymAddr(symname)
+	// cgopp.FfiCall[int](fnsym, fnptr)
 }
 
-func init_callack_inherit() { setAllInheritCallback2c("AllInherits", C.callbackAllInherits) }
+func init_callack_inherit() {
+	setAllInheritCallback2c("AllInherits", C.callbackAllInherits)
+}
 
 // 在C绑定中的projected继承代理方法直接调用
 //
 //export callbackAllInherits
-func callbackAllInherits(cbobj unsafe.Pointer, iname *C.char, handled *C.int, argc C.int, p0, p1, p2, p3, p4, p5, p6, p7, p8, p9 C.uint64_t) C.uint64_t {
+func callbackAllInherits(cbobj unsafe.Pointer, iname *C.char, handled *cint, argc cint, p0, p1, p2, p3, p4, p5, p6, p7, p8, p9 cu64) cu64 {
 	name_ := C.GoString(iname)
 	var handled_ int
-	rv := C.uint64_t(callbackAllInheritsGo(cbobj, name_, &handled_, int(argc),
+	rv := cu64(callbackAllInheritsGo(cbobj, name_, &handled_, int(argc),
 		uint64(p0), uint64(p1), uint64(p2), uint64(p3), uint64(p4),
 		uint64(p5), uint64(p6), uint64(p7), uint64(p8), uint64(p9)))
-	*handled = C.int(handled_)
-	return C.uint64_t(rv)
+	*handled = cint(handled_)
+	return cu64(rv)
 }
 
 // return true to show inherit debug info
