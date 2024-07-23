@@ -134,6 +134,7 @@ func implCallany[RTY any](rovp voidptr, cobj GetCthiser, args ...any) (ccret RTY
 		// }
 		if isctor {
 			clzsz := qtclzsz.Get(clzname)
+			gopp.TruePrint(clzsz <= 0, "wtf", clzsz, clzname)
 			// cthis := cgopp.Mallocgc(clzsz) // cannot destruct for free crash
 			cthis := cgopp.Malloc(clzsz) // todo, when free?
 			ccargs := append([]any{cthis}, convedargs...)
@@ -304,7 +305,18 @@ func argsconvert(mtho qtsyms.QtMethod, tys []reflect.Type, args ...any) (rets []
 	log.Println("argconving", len(vec), vec, sgnt)
 
 	for j := 0; j < len(vec); j++ {
-		argx, mat := qttypemathch(j, vec[j], tys[j], true, args[j])
+		argx := args[j]
+		if arg, ok := argx.(GetCthiser); ok {
+			if arg != nil && !reflect.ValueOf(arg).IsNil() {
+				argx = arg.GetCthis()
+			} else {
+				argx = voidptr(nil)
+			}
+			refval := reflect.ValueOf(arg)
+			log.Println(reflect.TypeOf(argx), argx, arg, arg == nil, refval.IsNil())
+		}
+
+		argx, mat := qttypemathch(j, vec[j], tys[j], true, argx)
 		if !mat {
 			// wtf???
 		}

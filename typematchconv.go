@@ -44,6 +44,19 @@ var typemcers = []TypeMatcher{
 	&TMCEQ{}, &TMCTocxref{}, &TMCTocxCharpp{},
 	&TMCQtptr{}, &TMCToQStrref{}, &TMCToQobjptr{},
 	&TMCint2long2{}, &TMCstr2charp{}, &TMCf64toreal{},
+	&TMCint2qflags{},
+}
+
+type TMCint2qflags struct{}
+
+func (me *TMCint2qflags) Match(d *TMCData, conv bool) bool {
+	if d.gotyo.Kind() == reflect.Int && strings.HasPrefix(d.ctys, "QFlags") {
+		if conv {
+
+		}
+		return true
+	}
+	return false
 }
 
 type TMCf64toreal struct{}
