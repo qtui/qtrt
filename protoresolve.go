@@ -15,16 +15,27 @@ import (
 )
 
 // only call by callany
-func getclzmthbycaller() (clz string, mth string) {
-	pc, _, _, _ := runtime.Caller(2)
+func getclzmthbycaller() (clz string, mth string, isst bool, isctor, isdtor bool) {
+	pc, _, _, _ := runtime.Caller(3)
 	fno := runtime.FuncForPC(pc)
 	fnname := fno.Name()
-	log.Println(fno, fnname, gopp.Retn(fno.FileLine(pc)))
+	// log.Println(fno, fnname, gopp.Retn(fno.FileLine(pc)))
 
+	// todo maybe add number suffix for overloaded
 	// main.NewQxx
 	if pos := strings.LastIndex(fnname, ".NewQ"); pos > 0 {
 		clz = fnname[pos+4:]
 		mth = clz
+		isctor = true
+		return
+	}
+	// todo maybe add number suffix for overloaded
+	// qtcore.QString_FromUtf8
+	if pos := strings.Index(fnname, "_"); pos > 0 {
+		bpos := strings.Index(fnname, ".Q")
+		clz = fnname[bpos+1 : pos]
+		mth = fnname[pos+1:]
+		isst = true
 		return
 	}
 	// main.(*QObject).Dummy
@@ -35,10 +46,22 @@ func getclzmthbycaller() (clz string, mth string) {
 	clzname := funcname[pos1+2 : pos2]
 	mthname := funcname[pos2+2:]
 
-	log.Println(clzname, mthname)
+	if mthname == "Dtor" {
+		isdtor = true
+		mthname = "~" + clzname
+		return
+	}
+	// log.Println(clzname, mthname)
 
 	clz = clzname
 	mth = mthname
+	return
+}
+
+// todo wip
+func checkclzmthpropsp(clz string, mth string) (isctor, isdtor, isst bool) {
+	isctor = clz == mth
+	// isdtor =
 	return
 }
 
@@ -47,10 +70,16 @@ const CppStaticCall = 0x3
 
 // static call: cobj == 0x3
 // like jit, name jitqt
-func Callany(cobj voidptr, args ...any) gopp.Fatptr {
-	clzname, mthname := getclzmthbycaller()
-	log.Println(clzname, mthname, cobj, args)
-	isctor := clzname == mthname
+func Callany(rvop, cobj voidptr, args ...any) gopp.Fatptr {
+	return implCallany(rvop, cobj, args...)
+}
+func implCallany(rovp voidptr, cobj voidptr, args ...any) gopp.Fatptr {
+	// log.Println("========", rovp, cobj, len(args), args)
+	clzname, mthname, isstatic, isctor, isdtor := getclzmthbycaller()
+	log.Println("========", clzname, mthname, rovp, cobj, len(args), args)
+	// isctor := clzname == mthname
+	// isdtor := mthname == "Dtor"
+	// mthname = gopp.IfElse2(isdtor, "~"+clzname, mthname)
 
 	mths, ok := qtsyms.QtSymbols[clzname]
 	gopp.FalsePrint(ok, "not found???", clzname, qtsyms.InitLoaded)
@@ -71,6 +100,8 @@ func Callany(cobj voidptr, args ...any) gopp.Fatptr {
 
 	if isctor {
 		rcmths = resolvebyctorno(rcmths)
+	} else if isdtor {
+		rcmths = resolvebydtorno(rcmths)
 	}
 
 	log.Println("final rcmths:", len(rcmths), rcmths)
@@ -83,8 +114,8 @@ func Callany(cobj voidptr, args ...any) gopp.Fatptr {
 		// good
 		mtho := rcmths[0]
 		convedargs := argsconvert(mtho, argtys, args...)
-		log.Println("oriargs", len(args), args)
-		log.Println("convedargs", len(convedargs), convedargs)
+		// log.Println("oriargs", len(args), args, "conved", len(convedargs), convedargs)
+		// log.Println("convedargs", len(convedargs), convedargs)
 		// fnsym := Libman.Dlsym(mtho.CCSym)
 		// if true {
 		fnsym := GetQtSymAddr(mtho.CCSym)
@@ -92,19 +123,38 @@ func Callany(cobj voidptr, args ...any) gopp.Fatptr {
 		if isctor {
 			clzsz := qtclzsz.Get(clzname)
 			// cthis := cgopp.Mallocgc(clzsz) // cannot destruct for free crash
-			cthis := cgopp.Malloc(clzsz)
+			cthis := cgopp.Malloc(clzsz) // todo, when free?
 			ccargs := append([]any{cthis}, convedargs...)
 			// log.Println("fficall info", mthname, fnsym, len(args), len(ccargs), ccargs)
 			// cpp ctor 函数是没有返回值的
 			cgopp.FfiCall[int](fnsym, ccargs...)
 			// ccret = cthis
 			ccret = gopp.FatptrOf(cthis)
-		} else {
+			// log.Println(cthis, ccret, clzsz, clzname)
+		} else if isdtor {
+			if fnsym == nil {
+				fnsym = GetQtSymAddr(clzname + "Dtor")
+				log.Println("Dtor weak symbol replace", mtho.CCSym, "=>", clzname+"Dtor", fnsym)
+			}
+			cgopp.FfiCall[gopp.Fatptr](fnsym, cobj)
+		} else if isstatic { // todo ROV
+			ccargs := convedargs
+			if rovp != nil { // 把 cobj 当作ROV使用
+				ccargs = append([]any{rovp}, ccargs...)
+			}
+			// log.Println("fficall info", clzname, mthname, fnsym, len(args), len(ccargs), ccargs)
+			// todo ROV
+			ccret = cgopp.FfiCall[gopp.Fatptr](fnsym, ccargs...)
+		} else { // common method // todo ROV
 			// todo
 			ccargs := append([]any{cobj}, convedargs...)
+			if rovp != nil {
+				ccargs = append([]any{rovp}, ccargs...)
+			}
 			// log.Println("fficall info", clzname, mthname, fnsym, len(args), len(ccargs), ccargs)
 			ccret = cgopp.FfiCall[gopp.Fatptr](fnsym, ccargs...)
 		}
+		// log.Println("call/ccret", ccret, clzname, mthname, "(", cobj, convedargs, ")")
 	default:
 		// sowtfuck
 	}
@@ -130,6 +180,25 @@ func resolvebyctorno(mths []qtsyms.QtMethod) (rets []qtsyms.QtMethod) {
 	}
 	return
 }
+func resolvebydtorno(mths []qtsyms.QtMethod) (rets []qtsyms.QtMethod) {
+	// bye C1E, C2E, C3E?
+	c2idx := -1
+	c1idx := -1
+	for idx, mtho := range mths {
+		if strings.Contains(mtho.CCSym, mtho.Name[1:]+"D1E") {
+			c1idx = idx
+		} else if strings.Contains(mtho.CCSym, mtho.Name[1:]+"D2E") {
+			c2idx = idx
+		}
+	}
+	if c2idx >= 0 {
+		rets = append(rets, mths[c2idx])
+	} else if c2idx >= 0 {
+		rets = append(rets, mths[c1idx])
+	} else {
+	}
+	return
+}
 
 // todo todo todo
 func qttypemathch(idx int, tystr string, tyo reflect.Type, conv bool, argx any) (any, bool) {
@@ -144,6 +213,7 @@ func qttypemathch(idx int, tystr string, tyo reflect.Type, conv bool, argx any) 
 	mcdata.ctys = tystr
 	mcdata.gotyo = tyo
 	mcdata.goargx = argx
+	mcdata.ffiargx = argx // default
 
 	for _, mater := range typemcers {
 		tymat = mater.Match(mcdata, conv)
@@ -151,7 +221,7 @@ func qttypemathch(idx int, tystr string, tyo reflect.Type, conv bool, argx any) 
 			if conv {
 				rvx = mcdata.ffiargx
 			}
-			log.Println("matched", reflect.TypeOf(mater), conv)
+			// log.Println("matched", reflect.TypeOf(mater), conv)
 			break
 		}
 	}
@@ -196,7 +266,7 @@ func argsconvert(mtho qtsyms.QtMethod, tys []reflect.Type, args ...any) (rets []
 	sgnt, _ := qtsyms.Demangle(mtho.CCSym)
 	// log.Println(sgnt, mtho.CCSym)
 	vec := qtsyms.SplitArgs(sgnt)
-	log.Println(len(vec), vec, sgnt)
+	log.Println("argconving", len(vec), vec, sgnt)
 
 	for j := 0; j < len(vec); j++ {
 		argx, mat := qttypemathch(j, vec[j], tys[j], true, args[j])
@@ -215,7 +285,7 @@ func resolvebyargty(tys []reflect.Type, mths []qtsyms.QtMethod) (rets []qtsyms.Q
 		sgnt, _ := qtsyms.Demangle(mtho.CCSym)
 		// log.Println(sgnt, mtho.CCSym)
 		vec := qtsyms.SplitArgs(sgnt)
-		log.Println(len(vec), vec, sgnt)
+		// log.Println(len(vec), vec, sgnt)
 
 		allmat := true
 		for j := 0; j < len(vec); j++ {
@@ -225,7 +295,7 @@ func resolvebyargty(tys []reflect.Type, mths []qtsyms.QtMethod) (rets []qtsyms.Q
 			}
 		}
 		if allmat {
-			log.Println(gopp.MyFuncName(), "rc", mtho.CCSym)
+			// log.Println(gopp.MyFuncName(), "rc", mtho.CCSym)
 			rets = append(rets, mtho)
 		}
 	}
@@ -237,7 +307,7 @@ func resolvebyname(mthname string, mths []qtsyms.QtMethod) (rets []qtsyms.QtMeth
 	for _, mtho := range mths {
 		// log.Println(mtho.Name)
 		if mtho.Name == mthname {
-			log.Println(gopp.MyFuncName(), "rc", mthname, mtho.CCSym)
+			// log.Println(gopp.MyFuncName(), "rc", mthname, mtho.CCSym)
 			rets = append(rets, mtho)
 		}
 	}
@@ -252,7 +322,7 @@ func resolvebyargc(argc int, mths []qtsyms.QtMethod) (rets []qtsyms.QtMethod) {
 		vec := qtsyms.SplitArgs(sgnt)
 		// log.Println(vec)
 		if len(vec) == argc {
-			log.Println(gopp.MyFuncName(), "rc", mtho.CCSym)
+			// log.Println(gopp.MyFuncName(), "rc", mtho.CCSym)
 			rets = append(rets, mtho)
 		}
 		// }
@@ -262,6 +332,11 @@ func resolvebyargc(argc int, mths []qtsyms.QtMethod) (rets []qtsyms.QtMethod) {
 
 func reflecttypes(args ...any) (rets []reflect.Type) {
 	for _, argx := range args {
+		if argx == nil { // argvx无类型的nil
+			ty := gopp.VoidpTy()
+			rets = append(rets, ty)
+			continue
+		}
 		ty := reflect.TypeOf(argx)
 		rets = append(rets, ty)
 	}

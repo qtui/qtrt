@@ -42,13 +42,15 @@ func (me *TMCData) Dbgstr() string {
 
 var typemcers = []TypeMatcher{
 	&TMCEQ{}, &TMCTocxref{}, &TMCTocxCharpp{},
-	&TMCQtptr{}, &TMCToQStrref{},
+	&TMCQtptr{}, &TMCToQStrref{}, &TMCToQobjptr{},
+	&TMCint2long2{}, &TMCstr2charp{},
 }
 
 // ///
 type TMCEQ struct{}
 
 func (me *TMCEQ) Match(d *TMCData, conv bool) bool {
+	// log.Println(d.gotyo, d.ctys)
 	if d.ctys == d.gotyo.String() {
 		if conv {
 			d.ffiargx = d.goargx
@@ -138,6 +140,39 @@ func (me *TMCToQStrref) Match(d *TMCData, conv bool) bool {
 			}
 			return true
 		}
+	}
+	return false
+}
+
+type TMCToQobjptr struct{}
+
+func (me *TMCToQobjptr) Match(d *TMCData, conv bool) bool {
+	if (d.gotyo == nil || d.gotyo.Kind() == reflect.UnsafePointer ||
+		d.gotyo.Kind() == reflect.Pointer) && strings.HasSuffix(d.ctys, "*") {
+		return true
+	}
+	return false
+}
+
+type TMCint2long2 struct{}
+
+func (me *TMCint2long2) Match(d *TMCData, conv bool) bool {
+	if d.gotyo.Kind() == reflect.Int &&
+		(d.ctys == "long long" || d.ctys == "long") {
+		return true
+	}
+	return false
+}
+
+type TMCstr2charp struct{}
+
+func (me *TMCstr2charp) Match(d *TMCData, conv bool) bool {
+	if d.gotyo.Kind() == reflect.String &&
+		(d.ctys == "char const*" || d.ctys == "char *") {
+		if conv {
+			d.ffiargx = cgopp.CStringgc(d.goargx.(string))
+		}
+		return true
 	}
 	return false
 }
