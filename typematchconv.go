@@ -43,7 +43,19 @@ func (me *TMCData) Dbgstr() string {
 var typemcers = []TypeMatcher{
 	&TMCEQ{}, &TMCTocxref{}, &TMCTocxCharpp{},
 	&TMCQtptr{}, &TMCToQStrref{}, &TMCToQobjptr{},
-	&TMCint2long2{}, &TMCstr2charp{},
+	&TMCint2long2{}, &TMCstr2charp{}, &TMCf64toreal{},
+}
+
+type TMCf64toreal struct{}
+
+func (me *TMCf64toreal) Match(d *TMCData, conv bool) bool {
+	if d.gotyo.Kind() == reflect.Float64 && d.ctys == "double" {
+		if conv {
+
+		}
+		return true
+	}
+	return false
 }
 
 // ///
