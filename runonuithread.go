@@ -10,6 +10,11 @@ import (
 	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
+/*
+//
+*/
+import "C"
+
 // todo
 type seqfnpair struct {
 	np *int64
@@ -30,6 +35,9 @@ func qtuithcbfningo(n *int64) {
 	}
 }
 
+func RunonUithreadfn(f func()) func() {
+	return func() { RunonUithread(f) }
+}
 func RunonUithread(f func()) {
 
 	const name = "QMetaObjectInvokeMethod1"
