@@ -119,6 +119,7 @@ func (*QDynSlotObject) _ConnectSwitch(src unsafe.Pointer, signame string, on boo
 	// 相当于初始化信号开关
 	var subDynSlot *QDynSlotObject
 	if !qt.ExistsSignal(src, signamep) {
+		// TODO 每个信号/槽连接创建一个QObject太浪费，看能不能用一个对象处理所有的连接
 		subDynSlot = NewQDynSlotObject(signamep, int(456))
 		subDynSlot.sigsrc = src
 		subDynSlot.sigobj = cobj

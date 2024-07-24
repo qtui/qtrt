@@ -19,7 +19,13 @@ func getclzmthbycaller() (clz string, mth string, isst bool, isctor, isdtor bool
 	pc, _, _, _ := runtime.Caller(3)
 	fno := runtime.FuncForPC(pc)
 	fnname := fno.Name()
-	log.Println(fno, fnname, gopp.Retn(fno.FileLine(pc)))
+	// log.Println(fno, fnname, gopp.Retn(fno.FileLine(pc)))
+
+	// overload with suffix z*, 日前支持z0-z9
+	namelast2c := fnname[len(fnname)-2:]
+	if namelast2c[0] == 'z' && namelast2c[1] >= '0' && namelast2c[1] <= '9' {
+		fnname = fnname[:len(fnname)-2]
+	}
 
 	// todo maybe add number suffix for overloaded
 	// main.NewQxx
@@ -77,11 +83,19 @@ const CppStaticCall = 0x3
 
 // static call: cobj == 0x3
 // like jit, name jitqt
-func Callany[RTY any](rvop voidptr, cobj GetCthiser, args ...any) RTY {
-	return implCallany[RTY](rvop, cobj, args...)
+// no rov
+func Callany[RTY any](cobj GetCthiser, args ...any) RTY {
+	return implCallany[RTY](nil, cobj, args...)
 }
-func Callany0(rvop voidptr, cobj GetCthiser, args ...any) {
-	implCallany[int](rvop, cobj, args...)
+
+// full signature
+func CallanyRov[RTY any](rovp voidptr, cobj GetCthiser, args ...any) RTY {
+	return implCallany[RTY](rovp, cobj, args...)
+}
+
+// no return, no rov
+func Callany0(cobj GetCthiser, args ...any) {
+	implCallany[int](nil, cobj, args...)
 }
 func implCallany[RTY any](rovp voidptr, cobj GetCthiser, args ...any) (ccret RTY) {
 	// log.Println("========", rovp, cobj, len(args), args)
