@@ -369,11 +369,26 @@ func refmtSymbolName(symname string) string {
 }
 
 func GetQtSymAddr(symname string) unsafe.Pointer {
+	rcsymnames := []string{}
+	// orig := symname
 	if strings.HasPrefix(symname, "__Z") { // why nm got __Z, but need _Z
 		symname = symname[1:]
+		rcsymnames = append(rcsymnames, symname)
 	}
 	symname = refmtSymbolName(symname)
-	return GetQtSymAddrRaw(symname)
+	rcsymnames = append(rcsymnames, symname)
+	rcsymnames = append(rcsymnames, symname+"_weakwrap")
+
+	var symadr voidptr
+	for _, name := range rcsymnames {
+		symadr = GetQtSymAddrRaw(name)
+		if symadr != nil {
+			break
+		}
+	}
+	gopp.NilPrint(symadr, rcsymnames)
+
+	return symadr
 }
 
 func GetQtSymAddrRaw(symname string) unsafe.Pointer {
@@ -389,7 +404,9 @@ func GetQtSymAddrRaw(symname string) unsafe.Pointer {
 	}
 
 	rv, err := purego.Dlsym(purego.RTLD_DEFAULT, symname)
-	gopp.ErrPrint(err, symname)
+	if false {
+		gopp.ErrPrint(err, symname)
+	}
 
 	return voidptr(rv)
 }

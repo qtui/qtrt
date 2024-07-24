@@ -44,7 +44,22 @@ var typemcers = []TypeMatcher{
 	&TMCEQ{}, &TMCTocxref{}, &TMCTocxCharpp{},
 	&TMCQtptr{}, &TMCToQStrref{}, &TMCToQobjptr{},
 	&TMCint2long2{}, &TMCstr2charp{}, &TMCf64toreal{},
-	&TMCint2qflags{},
+	&TMCint2qflags{}, &TMCint2qenums{},
+}
+
+type TMCint2qenums struct{}
+
+func (me *TMCint2qenums) Match(d *TMCData, conv bool) bool {
+	if d.gotyo.Kind() == reflect.Int &&
+		(strings.HasPrefix(d.ctys, "Qt::") ||
+			// QSizePolicy::
+			(strings.HasPrefix(d.ctys, "Q") && strings.Contains(d.ctys, "::"))) {
+		if conv {
+
+		}
+		return true
+	}
+	return false
 }
 
 type TMCint2qflags struct{}
@@ -121,7 +136,7 @@ func isqtptrtymat(tystr string, tyo reflect.Type) bool {
 	// goty := tyo.String()
 	if tyo.Kind() == reflect.Pointer {
 		ety := tyo.Elem()
-		log.Println(ety, ety.Name())
+		// log.Println(ety, ety.Name())
 		if ety.Name()+"*" == tystr {
 			return true
 		}

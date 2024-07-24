@@ -14,72 +14,57 @@ import (
 	"github.com/qtui/qtsyms"
 )
 
-// only call by callany
-func getclzmthbycaller() (clz string, mth string, isst bool, isctor, isdtor bool) {
-	pc, _, _, _ := runtime.Caller(3)
-	fno := runtime.FuncForPC(pc)
-	fnname := fno.Name()
-	// log.Println(fno, fnname, gopp.Retn(fno.FileLine(pc)))
-
-	// overload with suffix z*, 日前支持z0-z9
-	namelast2c := fnname[len(fnname)-2:]
-	if namelast2c[0] == 'z' && namelast2c[1] >= '0' && namelast2c[1] <= '9' {
-		fnname = fnname[:len(fnname)-2]
-	}
-
-	// todo maybe add number suffix for overloaded
-	// main.NewQxx
-	if pos := strings.LastIndex(fnname, ".NewQ"); pos > 0 {
-		clz = fnname[pos+4:]
-		mth = clz
-		isctor = true
-		return
-	}
-	if pos := strings.LastIndex(fnname, ".newQ"); pos > 0 {
-		clz = fnname[pos+4:]
-		mth = clz
-		isctor = true
-		return
-	}
-	// todo maybe add number suffix for overloaded
-	// qtcore.QString_FromUtf8
-	if pos := strings.Index(fnname, "_"); pos > 0 {
-		bpos := strings.Index(fnname, ".Q")
-		clz = fnname[bpos+1 : pos]
-		mth = fnname[pos+1:]
-		isst = true
-		return
-	}
-	// main.(*QObject).Dummy
-	funcname := "main.(*QObject).Dummy"
-	funcname = fnname
-	pos1 := strings.Index(funcname, "(")
-	pos2 := strings.Index(funcname, ")")
-	clzname := funcname[pos1+2 : pos2]
-	mthname := funcname[pos2+2:]
-
-	if mthname == "Dtor" {
-		isdtor = true
-		mth = "~" + clzname
-		clz = clzname
-		return
-	}
-	// log.Println(clzname, mthname)
-
-	clz = clzname
-	mth = mthname
-	return
-}
+// 本文件的函数也许还可以用于其他的C++库？
+// 也许还可以更抽象化一点，支持所有的C/C++库？
+// 还需要不少工作的，像得到类结构大小，得到inline的方法/函数符号，enum值等
+// 再加上libllvm解析头文件还有点可能。
+// project cxjit4go
 
 // todo wip
-func checkclzmthpropsp(clz string, mth string) (isctor, isdtor, isst bool) {
-	isctor = clz == mth
-	// isdtor =
-	return
-}
-
 // static call 用的不多，后续再考虑
 const CppStaticCall = 0x3
+
+// Callany with string class name and method name
+// just for some case, like test
+// todo 怎么支持重载的方法，1. 从传递的参数解析出来，2，调用传递参数信息
+// mthname c++ name, first char lower
+// for ctor, mth=new or classname
+// for dtor, mth=delete or Dtor. delete maybe conflict?
+// for static, cobj=nil,
+// example:
+//
+//	Callanystrfy[voidptr]("QWidget", "new", nil)
+//	Callanystrfy0("QWidget", "show", w)
+func CallanyStrfy[RTY any](clzname, mthname string, cobj GetCthiser, args ...any) RTY {
+	var rv RTY
+	rv = CallanyStrfyRov[RTY](clzname, mthname,
+		nil, cobj, args...)
+	return rv
+}
+
+// no return, no rov
+func CallanyStrfy0(clzname, mthname string, cobj GetCthiser, args ...any) {
+	CallanyStrfyRov[int](clzname, mthname,
+		nil, cobj, args...)
+}
+
+// full signature
+func CallanyStrfyRov[RTY any](clzname, mthname string, rovp voidptr, cobj GetCthiser, args ...any) RTY {
+	mthname = gopp.Title(mthname)
+	isstatic := cobj == nil // todo 区分无类型的nil和有类型的nil？
+	isctor := mthname == "new" || mthname == clzname
+	isdtor := mthname == "delete" || mthname == "Dtor"
+	if isctor {
+		mthname = clzname
+	} else if isdtor {
+		mthname = "Dtor"
+	}
+
+	var rv RTY
+	rv = implCallany2[RTY](clzname, mthname, isctor, isdtor, isstatic,
+		rovp, cobj, args...)
+	return rv
+}
 
 // static call: cobj == 0x3
 // like jit, name jitqt
@@ -100,6 +85,15 @@ func Callany0(cobj GetCthiser, args ...any) {
 func implCallany[RTY any](rovp voidptr, cobj GetCthiser, args ...any) (ccret RTY) {
 	// log.Println("========", rovp, cobj, len(args), args)
 	clzname, mthname, isstatic, isctor, isdtor := getclzmthbycaller()
+	// log.Println("========", clzname, mthname, rovp, cobj, len(args), args)
+
+	return implCallany2[RTY](clzname, mthname, isctor, isdtor, isstatic,
+		rovp, cobj, args...)
+}
+func implCallany2[RTY any](clzname, mthname string, isctor, isdtor, isstatic bool,
+	rovp voidptr, cobj GetCthiser, args ...any) (ccret RTY) {
+	// log.Println("========", rovp, cobj, len(args), args)
+	// clzname, mthname, isstatic, isctor, isdtor := getclzmthbycaller()
 	log.Println("========", clzname, mthname, rovp, cobj, len(args), args)
 	// isctor := clzname == mthname
 	// isdtor := mthname == "Dtor"
@@ -131,11 +125,7 @@ func implCallany[RTY any](rovp voidptr, cobj GetCthiser, args ...any) (ccret RTY
 		rcmths = resolvebydtorno(rcmths)
 	}
 
-	log.Println("final rcmths:", len(rcmths), rcmths)
 	switch len(rcmths) {
-	case 0:
-		// sowtfuck
-		gopp.Warn("No match, rcmths", clzname, mthname, argtys, len(namercmths), namercmths, len(namercmths))
 	case 1:
 		// good
 		mtho := rcmths[0]
@@ -155,8 +145,8 @@ func implCallany[RTY any](rovp voidptr, cobj GetCthiser, args ...any) (ccret RTY
 			// log.Println("fficall info", mthname, fnsym, len(args), len(ccargs), ccargs)
 			// cpp ctor 函数是没有返回值的
 			cgopp.FfiCall[int](fnsym, ccargs...)
-			// ccret = RTY(cthis)
-			gopp.Copyx(&ccret, &cthis)
+			ccret = any(cthis).(RTY)
+			// gopp.Copyx(&ccret, &cthis)
 			// log.Println(cthis, ccret, clzsz, clzname)
 		} else if isdtor {
 			if fnsym == nil {
@@ -182,8 +172,13 @@ func implCallany[RTY any](rovp voidptr, cobj GetCthiser, args ...any) (ccret RTY
 			ccret = cgopp.FfiCall[RTY](fnsym, ccargs...)
 		}
 		// log.Println("call/ccret", ccret, clzname, mthname, "(", cobj, convedargs, ")")
-	default:
-		// sowtfuck
+
+	case 0:
+		// sowtfuck, quit app? panic?
+		gopp.Warn("No match, namercmths", clzname, mthname, argtys, len(namercmths), namercmths, len(namercmths))
+	default: // >1
+		// sowtfuck, quit app? panic?
+		log.Println("Final rcmths>1:", clzname, mthname, argtys, len(rcmths), rcmths, len(rcmths))
 	}
 	return
 }
@@ -316,7 +311,7 @@ func argsconvert(mtho qtsyms.QtMethod, tys []reflect.Type, args ...any) (rets []
 	sgnt, _ := qtsyms.Demangle(mtho.CCSym)
 	// log.Println(sgnt, mtho.CCSym)
 	vec := qtsyms.SplitArgs(sgnt)
-	log.Println("argconving", len(vec), vec, sgnt)
+	// log.Println("argconving", len(vec), vec, sgnt)
 
 	for j := 0; j < len(vec); j++ {
 		argx := args[j]
@@ -327,7 +322,8 @@ func argsconvert(mtho qtsyms.QtMethod, tys []reflect.Type, args ...any) (rets []
 				argx = voidptr(nil)
 			}
 			refval := reflect.ValueOf(arg)
-			log.Println(reflect.TypeOf(argx), argx, arg, arg == nil, refval.IsNil())
+			_ = refval
+			// log.Println(reflect.TypeOf(argx), argx, arg, arg == nil, refval.IsNil())
 		}
 
 		argx, mat := qttypemathch(j, vec[j], tys[j], true, argx)
@@ -402,5 +398,69 @@ func reflecttypes(args ...any) (rets []reflect.Type) {
 		rets = append(rets, ty)
 	}
 
+	return
+}
+
+// only call by implCallany
+func getclzmthbycaller() (clz string, mth string, isst bool, isctor, isdtor bool) {
+	pc, _, _, _ := runtime.Caller(3)
+	fno := runtime.FuncForPC(pc)
+	fnname := fno.Name()
+	// log.Println(fno, fnname, gopp.Retn(fno.FileLine(pc)))
+
+	// overload with suffix z*, 日前支持z0-z9
+	namelast2c := fnname[len(fnname)-2:]
+	if namelast2c[0] == 'z' && namelast2c[1] >= '0' && namelast2c[1] <= '9' {
+		fnname = fnname[:len(fnname)-2]
+	}
+
+	// todo maybe add number suffix for overloaded
+	// main.NewQxx
+	if pos := strings.LastIndex(fnname, ".NewQ"); pos > 0 {
+		clz = fnname[pos+4:]
+		mth = clz
+		isctor = true
+		return
+	}
+	if pos := strings.LastIndex(fnname, ".newQ"); pos > 0 {
+		clz = fnname[pos+4:]
+		mth = clz
+		isctor = true
+		return
+	}
+	// todo maybe add number suffix for overloaded
+	// qtcore.QString_FromUtf8
+	if pos := strings.Index(fnname, "_"); pos > 0 {
+		bpos := strings.Index(fnname, ".Q")
+		clz = fnname[bpos+1 : pos]
+		mth = fnname[pos+1:]
+		isst = true
+		return
+	}
+	// main.(*QObject).Dummy
+	funcname := "main.(*QObject).Dummy"
+	funcname = fnname
+	pos1 := strings.Index(funcname, "(")
+	pos2 := strings.Index(funcname, ")")
+	clzname := funcname[pos1+2 : pos2]
+	mthname := funcname[pos2+2:]
+
+	if mthname == "Dtor" {
+		isdtor = true
+		mth = "~" + clzname
+		clz = clzname
+		return
+	}
+	// log.Println(clzname, mthname)
+
+	clz = clzname
+	mth = mthname
+	return
+}
+
+// todo wip
+func checkclzmthpropsp(clz string, mth string) (isctor, isdtor, isst bool) {
+	isctor = clz == mth
+	// isdtor =
 	return
 }
