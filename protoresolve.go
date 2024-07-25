@@ -66,6 +66,7 @@ func CallanyStrfyRov[RTY any](clzname, mthname string, rovp voidptr, cobj GetCth
 	return rv
 }
 
+// todo 支持模板方法，但不是模板类
 // static call: cobj == 0x3
 // like jit, name jitqt
 // no rov
@@ -132,7 +133,6 @@ func implCallany2[RTY any](clzname, mthname string, isctor, isdtor, isstatic boo
 		convedargs := argsconvert(mtho, argtys, args...)
 		// log.Println("oriargs", len(args), args, "conved", len(convedargs), convedargs)
 		// log.Println("convedargs", len(convedargs), convedargs)
-		// fnsym := Libman.Dlsym(mtho.CCSym)
 		// if true {
 		fnsym := GetQtSymAddr(mtho.CCSym)
 		// }
@@ -168,7 +168,7 @@ func implCallany2[RTY any](clzname, mthname string, isctor, isdtor, isstatic boo
 			if rovp != nil {
 				ccargs = append([]any{rovp}, ccargs...)
 			}
-			// log.Println("fficall info", clzname, mthname, fnsym, len(args), len(ccargs), ccargs)
+			// log.Println("fficall info", clzname, mthname, fnsym, len(args), len(ccargs), ccargs, namercmths)
 			ccret = cgopp.FfiCall[RTY](fnsym, ccargs...)
 		}
 		// log.Println("call/ccret", ccret, clzname, mthname, "(", cobj, convedargs, ")")

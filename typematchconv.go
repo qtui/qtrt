@@ -42,7 +42,9 @@ func (me *TMCData) Dbgstr() string {
 
 var typemcers = []TypeMatcher{
 	&TMCEQ{}, &TMCTocxref{}, &TMCTocxCharpp{},
-	&TMCQtptr{}, &TMCToQStrref{}, &TMCToQobjptr{},
+	&TMCQtptr{},
+	&TMCToQStrview{}, //
+	&TMCToQStrref{}, &TMCToQobjptr{},
 	&TMCint2long2{}, &TMCstr2charp{}, &TMCf64toreal{},
 	&TMCint2qflags{}, &TMCint2qenums{},
 }
@@ -158,6 +160,42 @@ func (me *TMCQtptr) Match(d *TMCData, conv bool) bool {
 				// .Elem().FieldByName("Cthis")
 			}
 			log.Println(tvx, d.Dbgstr())
+		}
+		return true
+	}
+	return false
+}
+
+type TMCToQStrview struct{}
+
+type Fatptr64 struct {
+	H int64
+	L int64
+}
+type Fatptr32 struct {
+	H int32
+	L int32
+}
+
+// purego传递结构做，变长的类型不行
+func Fatptrof[T any](ptr *T) any {
+	var rv any
+	if gopp.UintptrTySz == 4 {
+		rv = *((*Fatptr32)(voidptr(ptr)))
+	} else {
+		rv = *((*Fatptr64)(voidptr(ptr)))
+	}
+	return rv
+}
+
+func (me *TMCToQStrview) Match(d *TMCData, conv bool) bool {
+	// QAnyStringView ?<= string
+	if strings.Contains(d.gotyo.String(), "Fatptr") && d.ctys == "QAnyStringView" {
+		if conv {
+			// arg := d.goargx.(string)
+			// cv := Fatptrof(&arg)
+			// d.ffiargx = cv
+			// panic("todo")
 		}
 		return true
 	}
