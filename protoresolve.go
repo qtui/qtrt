@@ -2,6 +2,7 @@ package qtrt
 
 import (
 	"log"
+	"os"
 	"reflect"
 	"runtime"
 	"strings"
@@ -74,8 +75,12 @@ func Callany[RTY any](cobj GetCthiser, args ...any) RTY {
 	return implCallany[RTY](nil, cobj, args...)
 }
 
+// todo ROV 必定没有返回值了吧
 // full signature
 func CallanyRov[RTY any](rovp voidptr, cobj GetCthiser, args ...any) RTY {
+	return implCallany[RTY](rovp, cobj, args...)
+}
+func CallanyFull[RTY any](rovp voidptr, cobj GetCthiser, args ...any) RTY {
 	return implCallany[RTY](rovp, cobj, args...)
 }
 
@@ -180,6 +185,7 @@ func implCallany2[RTY any](clzname, mthname string, isctor, isdtor, isstatic boo
 		// sowtfuck, quit app? panic?
 		log.Println("Final rcmths>1:", clzname, mthname, argtys, len(rcmths), rcmths, len(rcmths))
 	}
+	gopp.TrueThen(len(rcmths) == 0 || len(rcmths) > 1, os.Exit, -1)
 	return
 }
 
@@ -271,38 +277,8 @@ func qttypemathch(idx int, tystr string, tyo reflect.Type, conv bool, argx any) 
 		}
 	}
 
-	// if goty == tystr {
-	// 	tymat = true
-	// } else if goty+"&" == tystr {
-	// 	tymat = true
-	// 	if conv {
-	// 		// 只对primitive type可以
-	// 		refval := reflect.New(tyo)
-	// 		refval.Elem().Set(reflect.ValueOf(argx))
-	// 		rvx = refval.Interface()
-	// 	}
-	// } else if goty == "[]string" && tystr == "char**" {
-	// 	tymat = true
-	// 	if conv {
-	// 		// todo how freeit
-	// 		ptr := cgopp.CStrArrFromStrs(argx.([]string))
-	// 		rvx = ptr
-	// 	}
-
-	// 	// QObject* ?<= *main.QObject
-	// } else if isqtptrtymat(tystr, tyo) {
-	// 	tymat = true
-	// 	if conv {
-	// 		tvx := reflect.ValueOf(argx)
-	// 		if tvx.IsNil() {
-
-	// 		} else {
-	// 			// .Elem().FieldByName("Cthis")
-	// 		}
-	// 		log.Println(tvx)
-	// 	}
+	// gopp.FalsePrint(tymat, "tymat", idx, tystr, "?<=", tyo, tymat)
 	// }
-	// gopp.FalsePrint(tymat, "tymat", idx, tystr, "?<=", tyo.String(), tymat)
 
 	return rvx, tymat
 }
@@ -354,6 +330,8 @@ func resolvebyargty(tys []reflect.Type, mths []qtsyms.QtMethod) (rets []qtsyms.Q
 		if allmat {
 			// log.Println(gopp.MyFuncName(), "rc", mtho.CCSym)
 			rets = append(rets, mtho)
+		} else {
+			// log.Println(gopp.MyFuncName(), "rc", mtho.CCSym, )
 		}
 	}
 	return

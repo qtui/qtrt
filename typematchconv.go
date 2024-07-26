@@ -104,6 +104,7 @@ func (me *TMCEQ) Match(d *TMCData, conv bool) bool {
 
 type TMCTocxref struct{}
 
+// int => int&
 func (me *TMCTocxref) Match(d *TMCData, conv bool) bool {
 	if d.gotyo.String()+"&" == d.ctys {
 		if conv {
@@ -135,11 +136,15 @@ type TMCQtptr struct{}
 
 func isqtptrtymat(tystr string, tyo reflect.Type) bool {
 	// QObject* ?<= *main.QObject
+	// QVariant const& ?<= *qtcore.QVariant
 	// goty := tyo.String()
 	if tyo.Kind() == reflect.Pointer {
 		ety := tyo.Elem()
-		// log.Println(ety, ety.Name())
-		if ety.Name()+"*" == tystr {
+		etyname := gopp.LastofGv(strings.Split(ety.Name(), "."))
+		// log.Println(ety, etyname, ety.Name())
+		if etyname+"*" == tystr {
+			return true
+		} else if etyname+" const&" == tystr {
 			return true
 		}
 	}
