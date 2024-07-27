@@ -47,6 +47,9 @@ type GetCthiser interface {
 }
 
 func CObjectFromptr(ptr voidptr) *CObject {
+	if ptr == nil {
+		log.Println("WARN nil cobj ptr")
+	}
 	me := &CObject{ptr}
 	return me
 }

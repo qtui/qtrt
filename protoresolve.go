@@ -100,13 +100,15 @@ func implCallany2[RTY any](clzname, mthname string, isctor, isdtor, isstatic boo
 	rovp voidptr, cobj GetCthiser, args ...any) (ccret RTY) {
 	// log.Println("========", rovp, cobj, len(args), args)
 	// clzname, mthname, isstatic, isctor, isdtor := getclzmthbycaller()
-	log.Println("========", clzname, mthname, rovp, cobj, len(args), args)
+	// this line should be trace level
+	log.Printf("== %v.%v rov:%v cobj:%v isst:%v %v %v", clzname, mthname, rovp, cobj, gopp.Toint(isstatic), len(args), args)
 	// isctor := clzname == mthname
 	// isdtor := mthname == "Dtor"
 	// mthname = gopp.IfElse2(isdtor, "~"+clzname, mthname)
 
 	mths, ok := qtsyms.QtSymbols[clzname]
 	gopp.FalsePrint(ok, "not found???", clzname, mthname, qtsyms.InitLoaded)
+	// log.Println(clzname, mthname, len(mths), mths, len(mths))
 
 	//
 	var namercmths []qtsyms.QtMethod // 备份
@@ -114,22 +116,28 @@ func implCallany2[RTY any](clzname, mthname string, isctor, isdtor, isstatic boo
 
 	rcmths = resolvebyname(mthname, rcmths)
 	namercmths = rcmths
+	gopp.ZeroPrint(len(rcmths), "mthname404", clzname, mthname, len(rcmths), rcmths)
+	gopp.TrueThen(len(rcmths) == 0, os.Exit, -1)
 
 	// 根据参数个数
 	rcmths = resolvebyargc(len(args), rcmths)
+	// log.Println(clzname, mthname, len(rcmths), rcmths, len(rcmths))
 
 	//
 	argtys := reflecttypes(args...)
 	rcmths = resolvebyargty(argtys, rcmths)
+	// log.Println(clzname, mthname, len(rcmths), rcmths, len(rcmths))
 
 	// 根据返回的引用类型
 	rcmths = resolvebyretrefty(rcmths)
+	// log.Println(clzname, mthname, len(rcmths), rcmths, len(rcmths))
 
 	if isctor {
 		rcmths = resolvebyctorno(rcmths)
 	} else if isdtor {
 		rcmths = resolvebydtorno(rcmths)
 	}
+	// log.Println(clzname, mthname, len(rcmths), rcmths, len(rcmths))
 
 	switch len(rcmths) {
 	case 1:
@@ -199,10 +207,13 @@ func resolvebyctorno(mths []qtsyms.QtMethod) (rets []qtsyms.QtMethod) {
 		} else if strings.Contains(mtho.CCSym, mtho.Name+"C2E") {
 			c2idx = idx
 		}
+		if c2idx >= 0 {
+			break
+		}
 	}
 	if c2idx >= 0 {
 		rets = append(rets, mths[c2idx])
-	} else if c2idx >= 0 {
+	} else if c1idx >= 0 {
 		rets = append(rets, mths[c1idx])
 	} else {
 	}
@@ -218,10 +229,13 @@ func resolvebydtorno(mths []qtsyms.QtMethod) (rets []qtsyms.QtMethod) {
 		} else if strings.Contains(mtho.CCSym, mtho.Name[1:]+"D2E") {
 			c2idx = idx
 		}
+		if c2idx >= 0 {
+			break
+		}
 	}
 	if c2idx >= 0 {
 		rets = append(rets, mths[c2idx])
-	} else if c2idx >= 0 {
+	} else if c1idx >= 0 {
 		rets = append(rets, mths[c1idx])
 	} else {
 	}
@@ -278,7 +292,6 @@ func qttypemathch(idx int, tystr string, tyo reflect.Type, conv bool, argx any) 
 	}
 
 	// gopp.FalsePrint(tymat, "tymat", idx, tystr, "?<=", tyo, tymat)
-	// }
 
 	return rvx, tymat
 }
@@ -340,7 +353,7 @@ func resolvebyargty(tys []reflect.Type, mths []qtsyms.QtMethod) (rets []qtsyms.Q
 func resolvebyname(mthname string, mths []qtsyms.QtMethod) (rets []qtsyms.QtMethod) {
 
 	for _, mtho := range mths {
-		// log.Println(mtho.Name)
+		// log.Println(mtho.Name, "want", mthname)
 		if mtho.Name == mthname {
 			// log.Println(gopp.MyFuncName(), "rc", mthname, mtho.CCSym)
 			rets = append(rets, mtho)
