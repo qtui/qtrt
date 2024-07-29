@@ -2,7 +2,6 @@ package qtrt
 
 import (
 	"fmt"
-	"log"
 	"reflect"
 	"strings"
 	"time"
@@ -160,11 +159,16 @@ func (me *TMCQtptr) Match(d *TMCData, conv bool) bool {
 		if conv {
 			tvx := reflect.ValueOf(argx)
 			if tvx.IsNil() {
-
 			} else {
 				// .Elem().FieldByName("Cthis")
+				// log.Println(tyo, tvx, tvx.IsValid(), argx)
+				// if obj, ok := argx.(*CObject); ok {
+				// 	d.ffiargx = obj.GetCthis()
+				// 	log.Println(d.ffiargx)
+				// 	gopp.PauseAk()
+				// }
 			}
-			log.Println(tvx, d.Dbgstr())
+			// log.Println(tvx, tvx.IsNil(), d.Dbgstr())
 		}
 		return true
 	}
@@ -216,7 +220,7 @@ func (me *TMCToQStrref) Match(d *TMCData, conv bool) bool {
 			if conv {
 				cthis := todoQStringNew(d.goargx.(string))
 				d.ffiargx = cthis
-				d.freefn = todoQStringDtor
+				// d.freefn = todoQStringDtor
 				// panic("todo")
 				//goval := minqt.QStringNew(d.goargx.(string))
 				// d.ffiargx = goval.Cthis
@@ -232,6 +236,8 @@ type TMCToQobjptr struct{}
 func (me *TMCToQobjptr) Match(d *TMCData, conv bool) bool {
 	if (d.gotyo == nil || d.gotyo.Kind() == reflect.UnsafePointer ||
 		d.gotyo.Kind() == reflect.Pointer) && strings.HasSuffix(d.ctys, "*") {
+		if conv {
+		}
 		return true
 	}
 	return false
@@ -241,7 +247,7 @@ type TMCint2long2 struct{}
 
 func (me *TMCint2long2) Match(d *TMCData, conv bool) bool {
 	if d.gotyo.Kind() == reflect.Int &&
-		(d.ctys == "long long" || d.ctys == "long") {
+		(d.ctys == "long long" || d.ctys == "long" || d.ctys == "int") {
 		return true
 	}
 	return false
@@ -265,14 +271,13 @@ func todoQStringNew(s string) voidptr {
 	// name := "__ZN7QStringC1EPKc" // 符号类型为t，dlsym找不到
 	name := "__ZN7QString8fromUtf8EPKcx"
 	sym := GetQtSymAddr(name)
-	// cthis := cgopp.Mallocgc(123)
-	cthis := cgopp.Malloc(qtclzsz.Get("QString"))
+	cthis := cgopp.Mallocpg(qtclzsz.Get("QString"))
 	s4c := cgopp.CStringaf(s)
 	cgopp.FfiCall[voidptr](sym, cthis, s4c, len(s))
-	if cthis != nil {
-		// runtime.SetFinalizer(cthis, todoQStringDtor2)
-		time.AfterFunc(gopp.DurandSec(3, 3), func() { todoQStringDtor(cthis) })
-	}
+
+	// runtime.SetFinalizer(cthis, todoQStringDtor2)
+	time.AfterFunc(gopp.DurandSec(3, 3), func() { todoQStringDtor(cthis) })
+
 	return cthis
 }
 

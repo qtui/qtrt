@@ -291,7 +291,7 @@ func qttypemathch(idx int, tystr string, tyo reflect.Type, conv bool, argx any) 
 		}
 	}
 
-	// gopp.FalsePrint(tymat, "tymat", idx, tystr, "?<=", tyo, tymat)
+	// gopp.FalsePrint(false, tymat, "tymat", idx, tystr, "?<=", tyo, tymat, reflect.TypeOf(mats), "conv", conv, rvx, reflect.TypeOf(rvx), "<=", reflect.TypeOf(argx))
 
 	return rvx, tymat
 }
