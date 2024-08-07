@@ -24,8 +24,8 @@ type seqfnpair struct {
 var runuithfns = cmap.New[seqfnpair]()
 var runuithseq int64 = 10000
 
-//export qtuithcbfningo
-func qtuithcbfningo(n *int64) {
+//export qtrtuithcbfningo
+func qtrtuithcbfningo(n *int64) {
 	key := fmt.Sprintf("%d", *n)
 	// log.Println(*n, key)
 	pair, ok := runuithfns.Get(key)
@@ -42,7 +42,7 @@ func RunonUithread(f func()) {
 
 	const name = "QMetaObjectInvokeMethod1"
 	sym := dlsym(name)
-	sym2 := dlsym("qtuithcbfningo")
+	sym2 := dlsym("qtrtuithcbfningo")
 	// log.Println(sym, name, sym2)
 
 	seq := new(int64)

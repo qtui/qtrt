@@ -1,40 +1,61 @@
+// //go:build !android
+// // +build !android
+
+
 #include <stdio.h>
 #include <stdint.h>
-#include "ffi.h"
+// #include "ffi.h"
+#include "libffi_fake.h"
 
-//
+static void* ffi_type_void_dlptr = 0;
+static void* ffi_type_pointer_dlptr = 0;
+static void* ffi_type_sint_dlptr = 0;
+static void* ffi_type_float_dlptr = 0;
+static void* ffi_type_double_dlptr = 0;
+static void* ffi_type_sint16_dlptr = 0;
+static void* ffi_type_sint32_dlptr = 0;
+static void* ffi_type_sint64_dlptr = 0;
+
+static int (*ffi_prep_cif_var_dlptr)(void*, int, int, int, void*, void*) = 0;
+static int (*ffi_prep_cif_dlptr)(void*, int, int, void*, void*) = 0;
+static void (*ffi_call_dlptr)(void*, void*, void*, void*) = 0;
+static void (*ffi_call_var_dlptr)() = 0;
+
+
+
 static ffi_type* itype2stype(int itype){
-    switch (itype) {
-    case FFI_TYPE_VOID:
-        return &ffi_type_void;
-    case FFI_TYPE_POINTER:
-        return &ffi_type_pointer;
-    case FFI_TYPE_INT:
-        return &ffi_type_sint;
-    case FFI_TYPE_FLOAT:
-        return &ffi_type_float;
-    case FFI_TYPE_DOUBLE:
-        return &ffi_type_double;
-    case FFI_TYPE_SINT8:
-        return &ffi_type_sint8;
-    case FFI_TYPE_UINT8:
-        return &ffi_type_uint8;
-    case FFI_TYPE_SINT16:
-        return &ffi_type_sint16;
-    case FFI_TYPE_UINT16:
-        return &ffi_type_uint16;
-    case FFI_TYPE_SINT32:
-        return &ffi_type_sint32;
-    case FFI_TYPE_UINT32:
-        return &ffi_type_uint32;
-    case FFI_TYPE_SINT64:
-        return &ffi_type_sint64;
-    case FFI_TYPE_UINT64:
-        return &ffi_type_uint64;
-    default:
-        break;
-    }
-    return &ffi_type_void;
+    return 0;
+    // switch (itype) {
+    // case FFI_TYPE_VOID:
+    //     return &ffi_type_void;
+    // case FFI_TYPE_POINTER:
+    //     return &ffi_type_pointer;
+    // case FFI_TYPE_INT:
+    //     return &ffi_type_sint;
+    // case FFI_TYPE_FLOAT:
+    //     return &ffi_type_float;
+    // case FFI_TYPE_DOUBLE:
+    //     return &ffi_type_double;
+    // case FFI_TYPE_SINT8:
+    //     return &ffi_type_sint8;
+    // case FFI_TYPE_UINT8:
+    //     return &ffi_type_uint8;
+    // case FFI_TYPE_SINT16:
+    //     return &ffi_type_sint16;
+    // case FFI_TYPE_UINT16:
+    //     return &ffi_type_uint16;
+    // case FFI_TYPE_SINT32:
+    //     return &ffi_type_sint32;
+    // case FFI_TYPE_UINT32:
+    //     return &ffi_type_uint32;
+    // case FFI_TYPE_SINT64:
+    //     return &ffi_type_sint64;
+    // case FFI_TYPE_UINT64:
+    //     return &ffi_type_uint64;
+    // default:
+    //     break;
+    // }
+    // return &ffi_type_void;
 }
 
 /*
@@ -52,8 +73,8 @@ void ffi_call_ex_impl(void*fn, int retype, uint64_t* retval, int argc, uint8_t* 
     }
 
     ffi_type* retyp = itype2stype(retype);
-    if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, argc, retyp, ffitys) == FFI_OK) {
-        ffi_call(&cif, fn, retval, ffivals);
+    if (ffi_prep_cif_dlptr(&cif, FFI_DEFAULT_ABI, argc, retyp, ffitys) == FFI_OK) {
+        ffi_call_dlptr(&cif, fn, retval, ffivals);
     }
 }
 
@@ -74,8 +95,8 @@ void ffi_call_var_ex_impl(void*fn, int retype, uint64_t* retval, int fixedargc, 
     }
 
     ffi_type* retyp = itype2stype(retype);
-    if (ffi_prep_cif_var(&cif, FFI_DEFAULT_ABI, fixedargc, totalargc, retyp, ffitys) == FFI_OK) {
-        ffi_call(&cif, fn, retval, ffivals);
+    if (ffi_prep_cif_var_dlptr(&cif, FFI_DEFAULT_ABI, fixedargc, totalargc, retyp, ffitys) == FFI_OK) {
+        ffi_call_dlptr(&cif, fn, retval, ffivals);
     }
 }
 
