@@ -271,7 +271,14 @@ func todoQStringNew(s string) voidptr {
 	// name := "__ZN7QStringC1EPKc" // 符号类型为t，dlsym找不到
 	name := "__ZN7QString8fromUtf8EPKcx"
 	sym := GetQtSymAddr(name)
-	cthis := cgopp.Mallocpg(qtclzsz.Get("QString"))
+
+	clzname := "QString"
+	clzsz := qtclzsz.Get(clzname)
+	clzsz2 := GetClassSizeByName2(clzname)
+	gopp.TruePrint(clzsz2 <= 0, "wtf", clzsz2, clzname)
+	gopp.FalsePrint(clzsz2 != clzsz, "ohwtf", clzsz, clzsz2)
+
+	cthis := cgopp.Mallocpg(clzsz)
 	s4c := cgopp.CStringaf(s)
 	cgopp.FfiCall[voidptr](sym, cthis, s4c, len(s))
 

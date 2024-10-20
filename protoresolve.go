@@ -152,6 +152,9 @@ func implCallany2[RTY any](clzname, mthname string, isctor, isdtor, isstatic boo
 		if isctor {
 			clzsz := qtclzsz.Get(clzname)
 			gopp.TruePrint(clzsz <= 0, "wtf", clzsz, clzname)
+			clzsz2 := GetClassSizeByName2(clzname)
+			gopp.TruePrint(clzsz2 <= 0, "wtf", clzsz2, clzname)
+			gopp.FalsePrint(clzsz2 != clzsz, "ohwtf", clzsz, clzsz2)
 			// cthis := cgopp.Mallocgc(clzsz) // cannot destruct for free crash
 			cthis := cgopp.Malloc(clzsz) // todo, when free?
 			ccargs := append([]any{cthis}, convedargs...)
@@ -381,7 +384,7 @@ func resolvebyargc(argc int, mths []qtsyms.QtMethod) (rets []qtsyms.QtMethod) {
 func reflecttypes(args ...any) (rets []reflect.Type) {
 	for _, argx := range args {
 		if argx == nil { // argvx无类型的nil
-			ty := gopp.VoidpTy()
+			ty := gopp.VoidpTy
 			rets = append(rets, ty)
 			continue
 		}

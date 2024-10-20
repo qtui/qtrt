@@ -1,5 +1,8 @@
 package qtrt
 
+// dont modify qtrt
+
+
 import "unsafe"
 
 // begin cgo
@@ -17,9 +20,23 @@ type u32 = uint32
 type u64 = uint64
 type f32 = float32
 type f64 = float64
+type sizet = int
+type isize = int
 type usize = uintptr
-type vptr = unsafe.Pointer
 type voidptr = unsafe.Pointer
+type rawptr = unsafe.Pointer
+type u128 = struct{ H, L uint64 }
+type i128 = struct{ H, L int64 }
+type fatptr = struct{ H, L usize }
+type quadptr = struct{ H0, H1, L0, L1 usize }
+
+// type sword = int32
+// type dword = int64
+// type qword = struct{ H, L int64 }
+
+// c&go conflict???
+// type byteptr = *byte
+// type charptr = *uint8
 
 // begin cgo
 type cuptr = C.uintptr_t
@@ -27,10 +44,17 @@ type csizet = C.size_t
 type cvptr = *C.void
 type charptr = *C.char
 type ucharptr = *C.uchar
+type byteptr = *C.uchar
 type scharptr = *C.schar
-type cint = C.int
+type wcharptr = *C.uint16_t
+type cbool = C.int  // = go.int32
+type cint = C.int   // = go.int32
+type cuint = C.uint // = go.uint32
 type cshort = C.short
 type clong = C.long
+type culong = C.ulong
+type clonglong = C.longlong
+type culonglong = C.ulonglong
 type cfloat = C.float
 type cdouble = C.double
 type cuintptr = C.uintptr_t
@@ -44,15 +68,16 @@ type cu16 = C.uint16_t
 // end cgo
 
 func anyptr2uptr[T any](p *T) usize {
-	var pp = usize(vptr(p))
+	var pp = usize(voidptr(p))
 	return pp
 }
 
 // begin cgo
 
 func anyptr2uptrc[T any](p *T) cuptr {
-	var pp = uintptr(vptr(p))
+	var pp = uintptr(voidptr(p))
 	return cuptr(pp)
 }
 
 // end cgo
+

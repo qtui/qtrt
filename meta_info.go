@@ -8,6 +8,8 @@ import (
 	"runtime"
 	"strings"
 	"unsafe"
+
+	"github.com/kitech/gopp"
 )
 
 // must call in func (this *XObject) XEnumItemName()
@@ -57,6 +59,48 @@ func GetClassStaticMetaObjectByName(clsname string) unsafe.Pointer {
 	symname := fmt.Sprintf("_ZN%d%s16staticMetaObjectE", len(clsname), clsname)
 	addr := GetQtSymAddrRaw(symname)
 	return addr
+}
+
+func GetClassSizeByName(clsname string) isize {
+	//  QThread::staticMetaObject::metaType().sizeOf()
+	//  QMetaType::fromName(QTime).sizeOf()
+	var size isize
+	var mtty voidptr
+
+	stmo := GetClassStaticMetaObjectByName(clsname)
+	if stmo == nil {
+		type qbaview struct {
+			sz   isize
+			data *byte
+		}
+		nameobj := qbaview{len(clsname), unsafe.StringData(clsname)}
+		// todo struct argument not support???
+		rv, err := InvokeQtFunc6("_ZN9QMetaType8fromNameE14QByteArrayView", FFI_TYPE_POINTER, nameobj)
+		ErrPrint(err)
+		mtty = voidptr(usize(rv))
+	} else {
+		rv, err := InvokeQtFunc6("_ZNK11QMetaObject8metaTypeEv", FFI_TYPE_POINTER, stmo)
+		ErrPrint(err)
+		mtty = voidptr(usize(rv))
+	}
+	/////
+	{
+		rv, err := InvokeQtFunc6("_ZNK9QMetaType6sizeOfEv", FFI_TYPE_INT, voidptr(&mtty))
+		ErrPrint(err)
+		size = isize(rv)
+	}
+
+	return size
+}
+
+func GetClassSizeByName2(clsname string) isize {
+	// log.Println(clsname)
+	// name4c, _ := gopp.CStringRef(clsname)
+	name4c := gopp.CStringgc(clsname)
+	rv, err := InvokeQtFunc6("GetClassSizeByName", FFI_TYPE_POINTER, name4c)
+	ErrPrint(err, clsname)
+	// log.Println(clsname, rv)
+	return isize(rv)
 }
 
 func getClassNameByObject(this interface{}) string {
